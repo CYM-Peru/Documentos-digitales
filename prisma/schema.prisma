@@ -1,0 +1,411 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["invoice_system"]
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  USER
+  APROBADOR
+
+  @@schema("invoice_system")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@schema("invoice_system")
+}
+
+enum OperationType {
+  RENDICION
+  CAJA_CHICA
+  PLANILLA_MOVILIDAD
+
+  @@schema("invoice_system")
+}
+
+enum AprobacionEstado {
+  PENDIENTE_APROBACION
+  APROBADA
+  RECHAZADA
+
+  @@schema("invoice_system")
+}
+
+enum OCRProvider {
+  AWS_TEXTRACT
+  GOOGLE_VISION
+  AZURE_COMPUTER_VISION
+  GEMINI_VISION
+
+  @@schema("invoice_system")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  active    Boolean  @default(true)
+
+  users    User[]
+  invoices Invoice[]
+  settings OrganizationSettings?
+  planillasMovilidad MovilidadPlanilla[]
+
+  @@map("organizations")
+  @@schema("invoice_system")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  phone          String?  // Número de WhatsApp para notificaciones (formato: 51999999999)
+  passwordHash   String?
+  role           UserRole @default(USER)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  active         Boolean  @default(true)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+  planillasCreadas MovilidadPlanilla[]
+  planillasAprobadas MovilidadPlanilla[] @relation("AprobadorPlanillas")
+
+  @@index([organizationId])
+  @@map("users")
+  @@schema("invoice_system")
+}
+
+model OrganizationSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+
+  // AWS Textract Settings (encrypted)
+  awsAccessKey      String?
+  awsSecretKey      String? // Encrypted
+  awsRegion         String?  @default("us-east-1")
+
+  // Google Settings (encrypted)
+  googleServiceAccount String? // Encrypted JSON
+  googleSheetsId       String?
+  googleDriveFolderId  String?
+
+  // Google Gemini AI (encrypted)
+  geminiApiKey String? // Encrypted
+  geminiModel  String? @default("gemini-2.0-flash-exp")
+  geminiPrompt String? @db.Text // Custom prompt for invoice analysis
+
+  // SUNAT API Settings (encrypted)
+  sunatClientId     String? // Encrypted - Client ID de SUNAT
+  sunatClientSecret String? // Encrypted - Client Secret de SUNAT
+  sunatRuc          String? // RUC de la empresa que consulta
+  sunatEnabled      Boolean @default(false) // Activar/desactivar validación SUNAT
+
+  // n8n Integration
+  n8nWebhookUrl String?
+
+  // SQL Server Integration (encrypted)
+  sqlServerEnabled Boolean @default(false) // Activar/desactivar exportación a SQL Server
+  sqlServerHost    String? // Encrypted - Servidor SQL Server (localhost o IP)
+  sqlServerPort    Int?    @default(1433)
+  sqlServerDatabase String? // Nombre de la base de datos
+  sqlServerUser    String? // Encrypted - Usuario SQL Server
+  sqlServerPassword String? // Encrypted - Contraseña SQL Server
+  sqlServerEncrypt Boolean @default(false) // SSL/TLS: false para SQL Server local, true para Azure SQL
+  sqlServerTrustCert Boolean @default(true) // Trust server certificate: true para SQL Server local
+
+  // OCR Provider
+  ocrProvider OCRProvider @default(GEMINI_VISION)
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SISTEMA DE DETECCIÓN AUTOMÁTICA DE FACTURAS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Monitor de Email - Detección automática de facturas en correo
+  emailMonitorEnabled Boolean @default(false) // Activar/desactivar monitoreo de email
+  emailMonitorType    String? @default("imap") // "imap" | "oauth2_gmail" | "oauth2_outlook"
+  emailHost           String? // Encrypted - Servidor IMAP (imap.gmail.com, outlook.office365.com)
+  emailPort           Int?    @default(993) // Puerto IMAP (993 con SSL, 143 sin SSL)
+  emailUsername       String? // Encrypted - Email para monitorear
+  emailPassword       String? // Encrypted - Contraseña o App Password
+  emailUseSsl         Boolean @default(true) // Usar SSL/TLS
+  emailFolder         String? @default("INBOX") // Carpeta a monitorear
+  emailCheckInterval  Int?    @default(15) // Intervalo de revisión en minutos (15, 30, 60)
+
+  // Filtros de Email - Configuración de detección
+  emailSubjectKeywords String? @default("factura,comprobante,invoice,boleta,nota de crédito") // Palabras clave en asunto (separadas por coma)
+  emailFromWhitelist   String? // Emails permitidos (separados por coma) - opcional
+  emailFromBlacklist   String? // Emails bloqueados (separados por coma) - opcional
+  emailAutoProcess     Boolean @default(true) // Procesar automáticamente XMLs detectados
+  emailDeleteAfter     Boolean @default(false) // Eliminar email después de procesar
+  emailMarkAsRead      Boolean @default(true) // Marcar email como leído después de procesar
+
+  // OAuth2 Credentials (para Gmail/Outlook) - Encrypted
+  emailOauth2ClientId     String? // Encrypted - OAuth2 Client ID
+  emailOauth2ClientSecret String? // Encrypted - OAuth2 Client Secret
+  emailOauth2RefreshToken String? // Encrypted - OAuth2 Refresh Token
+  emailOauth2AccessToken  String? // Encrypted - OAuth2 Access Token (renovable)
+  emailOauth2TokenExpiry  DateTime? // Expiración del Access Token
+
+  // Consulta Automática SUNAT - Detección de comprobantes recibidos
+  sunatAutoCheckEnabled   Boolean @default(false) // Activar consulta automática de comprobantes
+  sunatAutoCheckInterval  Int?    @default(1440) // Intervalo en minutos (1440 = 1 día)
+  sunatAutoCheckLastRun   DateTime? // Última ejecución de consulta
+  sunatCheckDaysBack      Int?    @default(7) // Días hacia atrás para consultar (7, 15, 30)
+
+  // Sistema de Alertas - Notificaciones automáticas
+  alertsEnabled           Boolean @default(true) // Activar sistema de alertas
+  alertMissingXmlDays     Int?    @default(3) // Días antes de alertar por XML faltante
+  alertAutoEmailProvider  Boolean @default(true) // Enviar email automático a proveedor solicitando XML
+  alertEmailTemplate      String? @db.Text // Template personalizado para emails a proveedores
+  alertNotifyUsers        String? // IDs de usuarios a notificar (separados por coma)
+  alertSlackWebhook       String? // Encrypted - Webhook de Slack para alertas
+  alertTeamsWebhook       String? // Encrypted - Webhook de Microsoft Teams
+
+  // Configuración de Emails Automáticos a Proveedores
+  providerEmailEnabled    Boolean @default(false) // Enviar emails automáticos a proveedores
+  providerEmailFrom       String? // Email remitente (tu empresa)
+  providerEmailSubject    String? @default("Solicitud de XML - Factura Electrónica") // Asunto del email
+  providerEmailSmtpHost   String? // Encrypted - Servidor SMTP (smtp.gmail.com)
+  providerEmailSmtpPort   Int?    @default(587) // Puerto SMTP
+  providerEmailSmtpUser   String? // Encrypted - Usuario SMTP
+  providerEmailSmtpPass   String? // Encrypted - Contraseña SMTP
+  providerEmailSmtpSsl    Boolean @default(true) // Usar SSL/TLS
+
+  // Notifications
+  emailNotifications Boolean @default(true)
+  webhookNotifications Boolean @default(false)
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WHATSAPP NOTIFICATIONS - Evolution API Integration
+  // ═══════════════════════════════════════════════════════════════════════════
+  whatsappEnabled         Boolean   @default(false) // Activar/desactivar notificaciones WhatsApp
+  whatsappInstanceName    String?   @default("azaleia-planillas") // Nombre de la instancia en Evolution API
+  whatsappInstanceId      String?   // ID de la instancia una vez conectada
+  whatsappConnected       Boolean   @default(false) // Estado de conexión
+  whatsappPhoneNumber     String?   // Número conectado (formato: 51999999999)
+  whatsappConnectedAt     DateTime? // Fecha de conexión
+  whatsappQrCode          String?   @db.Text // Último QR code generado
+  whatsappApiKey          String?   @default("B6D711FCDE4D4FD5936544120E713976") // API Key de Evolution API
+  whatsappApiUrl          String?   @default("http://localhost:8080") // URL de Evolution API
+
+  // Configuración de mensajes
+  whatsappNotifyPlanillaCreated  Boolean @default(true) // Notificar cuando se crea planilla
+  whatsappNotifyPlanillaApproved Boolean @default(true) // Notificar cuando se aprueba planilla
+  whatsappNotifyPlanillaRejected Boolean @default(true) // Notificar cuando se rechaza planilla
+
+  // Números de WhatsApp para notificaciones (formato: 51999999999, separados por coma)
+  whatsappApproverNumbers String? // Números de aprobadores (ej: "51968801771,51952393110")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+  @@schema("invoice_system")
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String
+
+  // Image data
+  imageUrl       String
+  thumbnailUrl   String? // Thumbnail pequeño para carga rápida
+  imageName      String
+  imageSize      Int?
+
+  // OCR data
+  ocrData        Json?
+  rawOcrResponse Json?
+
+  // Extracted fields
+  vendorName     String?
+  invoiceNumber  String?
+  invoiceDate    DateTime?
+  totalAmount    Float?
+  currency       String?
+  taxAmount      Float?
+
+  // Campos específicos para facturas peruanas (SUNAT)
+  documentType           String? // Tipo de documento SUNAT (FACTURA, BOLETA, NOTA DE CRÉDITO, etc.)
+  documentTypeCode       String? // Código SUNAT Catálogo 01 (01, 03, 07, 08, 09, etc.)
+  rucEmisor              String? // RUC del emisor (11 dígitos)
+  razonSocialEmisor      String? // Razón social del emisor
+  domicilioFiscalEmisor  String? // Domicilio fiscal del emisor
+  rucReceptor            String? // RUC del cliente/receptor
+  dniReceptor            String? // DNI del cliente/receptor
+  razonSocialReceptor    String? // Nombre/Razón social del receptor
+  serieNumero            String? // Serie y número (ej: F001-00012345)
+  subtotal               Float?  // Valor de venta sin IGV
+  igvTasa                Float?  // Tasa de IGV (ej: 18.0 o 10.0)
+  igvMonto               Float?  // Monto del IGV
+
+  // Código QR (para detección de duplicados y validación 100% precisa)
+  qrCode                 String?  // Contenido del código QR extraído (texto completo)
+  qrCodeHash             String?  // Hash del QR para búsqueda rápida de duplicados
+
+  // Detección de duplicados
+  isDuplicate            Boolean  @default(false)
+  duplicateOfId          String?  // ID de la factura original si es duplicado
+  duplicateDetectionMethod String? // "qr" | "ruc_serie_numero" | "manual"
+
+  // Verificación SUNAT
+  sunatVerified          Boolean? // true=Verificado, false=No válido, null=No verificado
+  sunatEstadoCp          String?  // 0=No existe, 1=Válido, 2=Anulado, 3=Rechazado
+  sunatEstadoRuc         String?  // 00=Activo, 01=Baja provisional, 02=Baja definitiva
+  sunatObservaciones     Json?    // Observaciones de SUNAT
+  sunatVerifiedAt        DateTime? // Fecha de verificación
+  sunatRetries           Int?     @default(0) // Número de reintentos de validación
+
+  // Status
+  status         InvoiceStatus @default(PENDING)
+  errorMessage   String?
+
+  // Integrations
+  googleSheetsRowId Int?
+  n8nExecutionId    String?
+
+  // Gestión y Rendición
+  nroRendicion      String? // Número de rendición (opcional, con alerta si vacío)
+  tipoOperacion     OperationType @default(RENDICION) // Tipo: RENDICION o CAJA_CHICA
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([qrCodeHash]) // Para búsqueda rápida de duplicados por QR
+  @@index([rucEmisor, serieNumero]) // Para búsqueda de duplicados por RUC+Serie+Número
+  @@index([isDuplicate])
+  @@map("invoices")
+  @@schema("invoice_system")
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  orgId     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+
+  @@index([key])
+  @@index([orgId])
+  @@map("api_keys")
+  @@schema("invoice_system")
+}
+
+model MovilidadPlanilla {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+
+  // Datos de la planilla
+  nroPlanilla       String?
+  razonSocial       String?
+  ruc               String?
+  periodo           String?
+  fechaEmision      DateTime?
+
+  // Datos del trabajador
+  nombresApellidos  String
+  cargo             String
+  dni               String
+  centroCosto       String?
+
+  // Totales
+  totalViaje        Float    @default(0)
+  totalDia          Float    @default(0)
+  totalGeneral      Float    @default(0)
+
+  // Tipo de operación y número asignado
+  tipoOperacion     OperationType?
+  nroRendicion      String?
+  nroCajaChica      String?
+
+  // Estado de aprobación
+  estadoAprobacion  AprobacionEstado @default(PENDIENTE_APROBACION)
+  aprobadoPorId     String?
+  aprobadoEn        DateTime?
+  comentariosAprobacion String?
+  aplicadaEn        DateTime?  // 🆕 Fecha en que se aplicó a rendición/caja chica
+
+  // Imagen escaneada (si aplica)
+  imageUrl          String?
+
+  // Metadatos
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relaciones
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aprobadoPor  User?        @relation("AprobadorPlanillas", fields: [aprobadoPorId], references: [id])
+  gastos       MovilidadGasto[]
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([estadoAprobacion])
+  @@index([aprobadoPorId])
+  @@index([createdAt])
+  @@map("movilidad_planillas")
+  @@schema("invoice_system")
+}
+
+model MovilidadGasto {
+  id          Int      @id @default(autoincrement())
+  planillaId  String
+
+  // Fecha del gasto
+  dia         Int?
+  mes         Int?
+  anio        Int?
+  fechaGasto  DateTime?
+
+  // Descripción
+  motivo      String?
+  origen      String?
+  destino     String?
+
+  // Montos
+  montoViaje  Float    @default(0)
+  montoDia    Float    @default(0)
+
+  // Metadatos
+  createdAt   DateTime @default(now())
+
+  // Relación
+  planilla    MovilidadPlanilla @relation(fields: [planillaId], references: [id], onDelete: Cascade)
+
+  @@index([planillaId])
+  @@map("movilidad_gastos")
+  @@schema("invoice_system")
+}

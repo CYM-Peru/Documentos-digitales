@@ -1,0 +1,56 @@
+ Describing process with id 0 - name invoice-system 
+┌───────────────────┬──────────────────────────────────────────┐
+│ status            │ online                                   │
+│ name              │ invoice-system                           │
+│ namespace         │ default                                  │
+│ version           │ N/A                                      │
+│ restarts          │ 42                                       │
+│ uptime            │ 14m                                      │
+│ script path       │ /usr/bin/npm                             │
+│ script args       │ start                                    │
+│ error log path    │ /root/.pm2/logs/invoice-system-error.log │
+│ out log path      │ /root/.pm2/logs/invoice-system-out.log   │
+│ pid path          │ /root/.pm2/pids/invoice-system-0.pid     │
+│ interpreter       │ /usr/bin/node                            │
+│ interpreter args  │ N/A                                      │
+│ script id         │ 0                                        │
+│ exec cwd          │ /opt/invoice-system                      │
+│ exec mode         │ fork_mode                                │
+│ node.js version   │ 20.19.5                                  │
+│ node env          │ N/A                                      │
+│ watch & reload    │ ✘                                        │
+│ unstable restarts │ 0                                        │
+│ created at        │ 2025-11-19T22:07:02.940Z                 │
+└───────────────────┴──────────────────────────────────────────┘
+ Actions available 
+┌────────────────────────┐
+│ km:heapdump            │
+│ km:cpu:profiling:start │
+│ km:cpu:profiling:stop  │
+│ km:heap:sampling:start │
+│ km:heap:sampling:stop  │
+└────────────────────────┘
+ Trigger via: pm2 trigger invoice-system <action_name>
+
+ Code metrics value 
+┌────────────────────────┬──────────┐
+│ Used Heap Size         │ 7.99 MiB │
+│ Heap Usage             │ 88.97 %  │
+│ Heap Size              │ 8.98 MiB │
+│ Event Loop Latency p95 │ 1.34 ms  │
+│ Event Loop Latency     │ 0.37 ms  │
+│ Active handles         │ 5        │
+│ Active requests        │ 0        │
+└────────────────────────┴──────────┘
+ Divergent env variables from local env 
+┌────────────────┬────────────────────────────────────────┐
+│ SSH_CONNECTION │ 190.116.107.211 53813 147.93.10.141 22 │
+│ SHLVL          │ 2                                      │
+│ XDG_SESSION_ID │ 3625                                   │
+│ SSH_CLIENT     │ 190.116.107.211 53813 22               │
+└────────────────┴────────────────────────────────────────┘
+
+ Add your own code metrics: http://bit.ly/code-metrics
+ Use `pm2 logs invoice-system [--lines 1000]` to display logs
+ Use `pm2 env 0` to display environment variables
+ Use `pm2 monit` to monitor CPU and Memory usage invoice-system

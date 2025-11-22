@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Invoice OCR App
+  invoice-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invoice-ocr-app
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    volumes:
+      - ./uploads:/app/public/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+    networks:
+      - invoice-network
+
+  # PostgreSQL (opcional, solo si no usas el local o Supabase)
+  postgres:
+    image: postgres:16-alpine
+    container_name: invoice-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"  # Puerto 5433 para no conflictar con el local
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-invoice_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change_this_password}
+      - POSTGRES_DB=${POSTGRES_DB:-invoice_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - invoice-network
+    profiles:
+      - with-postgres  # Solo se levanta si se especifica: docker-compose --profile with-postgres up
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  invoice-network:
+    driver: bridge

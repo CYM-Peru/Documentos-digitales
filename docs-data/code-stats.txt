@@ -1,0 +1,13 @@
+=== Líneas de código por tipo ===
+
+TypeScript/TSX:
+ 17882 total
+
+Componentes React:
+12
+
+API Routes:
+23
+
+Páginas:
+7

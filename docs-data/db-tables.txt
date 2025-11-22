@@ -1,0 +1,2 @@
+psql: error: connection to server at "db.oifpvdrmibxqftnqxmsb.supabase.co" (2600:1f1e:75b:4b0d:5922:c011:765e:9fa2), port 5432 failed: FATAL:  password authentication failed for user "whatsapp_user"
+connection to server at "db.oifpvdrmibxqftnqxmsb.supabase.co" (2600:1f1e:75b:4b0d:5922:c011:765e:9fa2), port 5432 failed: FATAL:  password authentication failed for user "whatsapp_user"

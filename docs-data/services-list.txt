@@ -1,0 +1,13 @@
+-rw------- 1 root root 9.0K Nov 17 15:02 /opt/invoice-system/src/services/alert-system.ts
+-rw-r--r-- 1 root root 5.8K Nov  3 04:49 /opt/invoice-system/src/services/duplicateDetection.ts
+-rw------- 1 root root 7.3K Nov 17 15:34 /opt/invoice-system/src/services/email-monitor.ts
+-rw-r--r-- 1 root root  14K Nov 19 17:05 /opt/invoice-system/src/services/gemini.ts
+-rw-r--r-- 1 root root  32K Nov 13 14:43 /opt/invoice-system/src/services/google-sheets.ts
+-rw-r--r-- 1 root root 1.5K Nov  2 17:20 /opt/invoice-system/src/services/n8n.ts
+-rw-r--r-- 1 root root  29K Nov 19 15:35 /opt/invoice-system/src/services/sqlserver.ts
+-rw------- 1 root root 7.0K Nov 17 15:01 /opt/invoice-system/src/services/sunat-auto-check.ts
+-rw-r--r-- 1 root root  19K Nov 11 10:32 /opt/invoice-system/src/services/sunat.ts
+-rw-r--r-- 1 root root 6.4K Nov  2 19:56 /opt/invoice-system/src/services/textract.ts
+-rw-r--r-- 1 root root  21K Nov  2 22:40 /opt/invoice-system/src/services/vision.ts
+-rw------- 1 root root 7.9K Nov 19 16:38 /opt/invoice-system/src/services/whatsapp.ts
+-rw------- 1 root root  14K Nov 17 14:22 /opt/invoice-system/src/services/xml-ubl-parser.ts

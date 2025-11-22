@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  evolution-api:
+    image: atendai/evolution-api:v2.1.1
+    container_name: evolution-api
+    restart: always
+    network_mode: host
+    environment:
+      # Server Configuration
+      - SERVER_URL=http://localhost:8080
+      - SERVER_PORT=8080
+
+      # API Configuration
+      - AUTHENTICATION_API_KEY=B6D711FCDE4D4FD5936544120E713976
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+
+      # Database Configuration (PostgreSQL)
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://whatsapp_user:azaleia_pg_2025_secure@localhost:5432/azaleia_crm?schema=evolution_api
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+
+      # WhatsApp Configuration
+      - QRCODE_LIMIT=30
+      - QRCODE_COLOR=#198754
+
+      # Instance Configuration
+      - DEL_INSTANCE=false
+      - DEL_TEMP_INSTANCES=true
+
+      # Logs
+      - LOG_LEVEL=ERROR
+      - LOG_COLOR=true
+
+      # Webhook Configuration
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_GLOBAL_URL=http://localhost:3000/api/webhooks/whatsapp
+      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
+
+      # Events to listen
+      - WEBHOOK_EVENTS_APPLICATION_STARTUP=false
+      - WEBHOOK_EVENTS_QRCODE_UPDATED=true
+      - WEBHOOK_EVENTS_MESSAGES_SET=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - WEBHOOK_EVENTS_MESSAGES_UPDATE=true
+      - WEBHOOK_EVENTS_MESSAGES_DELETE=false
+      - WEBHOOK_EVENTS_SEND_MESSAGE=false
+      - WEBHOOK_EVENTS_CONTACTS_SET=false
+      - WEBHOOK_EVENTS_CONTACTS_UPSERT=false
+      - WEBHOOK_EVENTS_CONTACTS_UPDATE=false
+      - WEBHOOK_EVENTS_PRESENCE_UPDATE=false
+      - WEBHOOK_EVENTS_CHATS_SET=false
+      - WEBHOOK_EVENTS_CHATS_UPSERT=false
+      - WEBHOOK_EVENTS_CHATS_UPDATE=false
+      - WEBHOOK_EVENTS_CHATS_DELETE=false
+      - WEBHOOK_EVENTS_GROUPS_UPSERT=false
+      - WEBHOOK_EVENTS_GROUPS_UPDATE=false
+      - WEBHOOK_EVENTS_GROUP_PARTICIPANTS_UPDATE=false
+      - WEBHOOK_EVENTS_CONNECTION_UPDATE=true
+      - WEBHOOK_EVENTS_CALL=false
+      - WEBHOOK_EVENTS_NEW_JWT_TOKEN=false
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+
+volumes:
+  evolution_instances:
+  evolution_store:

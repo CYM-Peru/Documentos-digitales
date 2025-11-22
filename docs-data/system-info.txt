@@ -1,0 +1,15 @@
+=== SISTEMA OPERATIVO ===
+Linux srv1003117 6.8.0-86-generic #87-Ubuntu SMP PREEMPT_DYNAMIC Mon Sep 22 18:03:36 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+=== NODE VERSION ===
+v20.19.5
+
+=== NPM VERSION ===
+11.6.2
+
+=== DOCKER VERSION ===
+Docker version 28.5.0, build 887030f
+
+=== DISK USAGE ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       193G   86G  108G  45% /

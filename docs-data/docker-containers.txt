@@ -1,0 +1,9 @@
+CONTAINER ID   IMAGE                           COMMAND                  CREATED          STATUS          PORTS                                                                                                NAMES
+080b442a1eb6   atendai/evolution-api:v2.1.1    "/bin/bash -c '. ./D…"   52 minutes ago   Up 51 minutes                                                                                                        evolution-api
+c532e7f990fe   root-n8n                        "tini -- /docker-ent…"   3 weeks ago      Up 2 days       0.0.0.0:5679->5678/tcp, [::]:5679->5678/tcp                                                          root-n8n-1
+769bbc736ed1   redis:7-alpine                  "docker-entrypoint.s…"   3 weeks ago      Up 2 weeks      6379/tcp                                                                                             root-redis-1
+9f0665cf9a51   4bab48bea677                    "tini -- /docker-ent…"   5 weeks ago      Up 2 days       0.0.0.0:5680->5678/tcp, [::]:5680->5678/tcp                                                          root-n8nmini-1
+499d1f5f9977   ollama/ollama:latest            "/bin/ollama serve"      6 weeks ago      Up 2 weeks      127.0.0.1:11434->11434/tcp                                                                           ollama-local
+923e27579ba2   qdrant/qdrant:latest            "./entrypoint.sh"        6 weeks ago      Up 2 weeks      127.0.0.1:6333->6333/tcp, 6334/tcp                                                                   qdrant-local
+e4b54bb59513   4bab48bea677                    "tini -- /docker-ent…"   6 weeks ago      Up 2 days       127.0.0.1:5678->5678/tcp                                                                             n8n-n8n-1
+eceb3ce2b33a   portainer/portainer-ce:latest   "/portainer"             2 months ago     Up 2 weeks      0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 8000/tcp, 0.0.0.0:9443->9443/tcp, [::]:9443->9443/tcp   portainer
