@@ -109,6 +109,7 @@ export default function HomePage() {
   const [pollingActive, setPollingActive] = useState(false)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [columnCount, setColumnCount] = useState<4 | 5 | 6>(6) // Selector de columnas
+  const [modoTrabajo, setModoTrabajo] = useState(false) // Toggle para ver solo mis documentos
   const [nroRendicion, setNroRendicion] = useState('')
   const [rendiciones, setRendiciones] = useState<Rendicion[]>([])
   const [loadingRendiciones, setLoadingRendiciones] = useState(false)
@@ -325,7 +326,7 @@ export default function HomePage() {
         loadRendiciones() // Recargar rendiciones/cajas chicas al cambiar tipo
       }
     }
-  }, [status, userFilter, operationType, estadoCierre, loadPlanillas])
+  }, [status, userFilter, operationType, estadoCierre, loadPlanillas, modoTrabajo])
 
   // Auto-refresh SUPER AGRESIVO: actualización cada 1 segundo
   useEffect(() => {
@@ -599,6 +600,11 @@ export default function HomePage() {
         params.append('soloAbiertas', 'false')
       } else if (estadoCierre === 'todas') {
         params.append('soloAbiertas', 'null')
+      }
+
+      // Si está en modo trabajo, filtrar solo las del usuario
+      if (modoTrabajo) {
+        params.append('modoTrabajo', 'true')
       }
 
       const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
@@ -1846,6 +1852,28 @@ export default function HomePage() {
                   {f.icon} {f.label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Toggle Modo Trabajo - Solo para roles que pueden ver todo */}
+          {(operationType === 'RENDICION' || operationType === 'CAJA_CHICA') &&
+           ['SUPER_ADMIN', 'STAFF', 'VERIFICADOR', 'APROBADOR'].includes(session?.user?.role || '') && (
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200 mt-2">
+              <span className="text-xs font-medium text-gray-700">
+                👤 Modo Trabajo (solo mis {operationType === 'CAJA_CHICA' ? 'cajas' : 'rendiciones'})
+              </span>
+              <button
+                onClick={() => setModoTrabajo(!modoTrabajo)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  modoTrabajo ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${
+                    modoTrabajo ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           )}
         </div>

@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
       soloAbiertasParam === 'null' ? null :
       soloAbiertasParam !== 'false'
 
+    // Modo trabajo: filtrar solo las del usuario aunque sea admin
+    const modoTrabajo = searchParams.get('modoTrabajo') === 'true'
+
     // Obtener configuración de SQL Server
     const settings = await prisma.organizationSettings.findFirst({
       where: {
@@ -66,6 +69,7 @@ export async function GET(request: NextRequest) {
     console.log('💰 User role:', session.user.role)
     console.log('💰 Can view all:', canViewAll)
     console.log('💰 Solo abiertas:', soloAbiertas)
+    console.log('💰 Modo trabajo:', modoTrabajo)
 
     if (!canViewAll && !username) {
       console.log('❌ Username vacío y no puede ver todas!')
@@ -86,8 +90,10 @@ export async function GET(request: NextRequest) {
       trustServerCertificate: settings.sqlServerTrustCert,
     })
 
-    // Si puede ver todas, no pasar filtro de usuario; si no, filtrar por su username
-    const filterUsername = canViewAll ? null : username
+    // Si está en modo trabajo, filtrar por username aunque sea admin
+    // Si puede ver todas y NO está en modo trabajo, no filtrar
+    // Si no puede ver todas, siempre filtrar por su username
+    const filterUsername = modoTrabajo ? username : (canViewAll ? null : username)
     console.log('💰 Llamando a getCajasChicasPendientes con username:', filterUsername || 'TODAS (sin filtro)')
 
     // Obtener cajas chicas (con filtro de estado)
@@ -106,6 +112,7 @@ export async function GET(request: NextRequest) {
       cajasChicas,
       username,
       soloAbiertas,
+      modoTrabajo,
     })
   } catch (error: any) {
     console.error('Get cajas chicas error:', error)
