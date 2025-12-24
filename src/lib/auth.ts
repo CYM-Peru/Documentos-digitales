@@ -18,8 +18,15 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        // Buscar por email O por username
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials.email },
+              { username: credentials.email.toUpperCase() },
+              { username: credentials.email }
+            ]
+          },
           include: { organization: true },
         })
 
