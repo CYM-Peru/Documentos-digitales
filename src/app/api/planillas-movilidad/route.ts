@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { PlanillaWhatsAppNotifier } from '@/services/whatsapp'
+import { CorrelativoService } from '@/services/correlativo'
+import { PlanillaEmailService } from '@/services/planilla-email'
 
 /**
  * GET /api/planillas-movilidad - Obtiene las planillas de movilidad del usuario
@@ -16,9 +17,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 🆕 Determinar qué planillas mostrar según el rol
-    // APROBADOR, ADMIN y SUPERVISOR ven TODAS las planillas de la organización
-    // Otros roles solo ven sus propias planillas
-    const canViewAll = ['APROBADOR', 'ADMIN', 'SUPERVISOR'].includes(session.user.role)
+    // SUPER_ADMIN, VERIFICADOR, STAFF, ORG_ADMIN, ADMIN y APROBADOR ven TODAS las planillas de la organización
+    // USER_L1 y USER_L2 solo ven sus propias planillas
+    const canViewAll = ['SUPER_ADMIN', 'VERIFICADOR', 'STAFF', 'ORG_ADMIN', 'ADMIN', 'APROBADOR'].includes(session.user.role)
 
     const whereClause: any = {
       organizationId: session.user.organizationId,
@@ -88,16 +89,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Generar correlativo único (formato: "2025-001")
+    // Este proceso es atómico y garantiza números únicos incluso con usuarios simultáneos
+    const correlativo = await CorrelativoService.obtenerSiguienteCorrelativo()
+    console.log(`📋 Correlativo asignado: ${correlativo}`)
+
     // Crear planilla en PostgreSQL con estado PENDIENTE_APROBACION
     const planilla = await prisma.movilidadPlanilla.create({
       data: {
         organizationId: session.user.organizationId,
         userId: session.user.id,
 
-        // Datos de la planilla
-        nroPlanilla: body.nroPlanilla || null,
-        razonSocial: body.razonSocial || null,
-        ruc: body.ruc || null,
+        // Datos de la planilla - Usar correlativo generado
+        nroPlanilla: correlativo,
+        razonSocial: body.razonSocial || 'CALZADOS AZALEIA PERU S.A.',
+        ruc: '90000000004', // RUC fijo para planillas de movilidad
         periodo: body.periodo || null,
         fechaEmision: body.fechaEmision ? new Date(body.fechaEmision) : null,
 
@@ -149,59 +155,31 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 🆕 Enviar notificación WhatsApp a aprobadores (si está activado)
+    // 🔔 Enviar notificación por EMAIL a los aprobadores
     try {
-      const settings = await prisma.organizationSettings.findFirst({
-        where: { organizationId: session.user.organizationId },
+      const emailService = new PlanillaEmailService()
+
+      await emailService.notifyNewPlanilla({
+        planillaId: planilla.id,
+        nroPlanilla: correlativo,
+        userName: planilla.user?.name || body.nombresApellidos || 'Usuario',
+        userEmail: planilla.user?.email || undefined,
+        totalAmount: body.totalGeneral || 0,
+        gastoCount: planilla.gastos.length,
+        createdAt: planilla.createdAt
       })
 
-      if (
-        settings?.whatsappEnabled &&
-        settings?.whatsappConnected &&
-        settings?.whatsappNotifyPlanillaCreated &&
-        settings?.whatsappInstanceName &&
-        settings?.whatsappApproverNumbers
-      ) {
-        console.log('📱 WhatsApp enabled - sending notification to approvers')
-
-        const notifier = new PlanillaWhatsAppNotifier(
-          settings.whatsappApiUrl || undefined,
-          settings.whatsappApiKey || undefined
-        )
-
-        // Enviar a cada aprobador
-        const approverNumbers = settings.whatsappApproverNumbers
-          .split(',')
-          .map((n: string) => n.trim())
-          .filter((n: string) => n.length > 0)
-
-        for (const approverNumber of approverNumbers) {
-          try {
-            await notifier.notifyPlanillaCreated({
-              instanceName: settings.whatsappInstanceName,
-              approverPhone: approverNumber,
-              userName: planilla.user.name || planilla.user.email,
-              totalAmount: planilla.totalGeneral,
-              planillaId: planilla.id,
-            })
-            console.log(`✅ WhatsApp sent to approver: ${approverNumber}`)
-          } catch (error: any) {
-            console.error(`❌ Error sending WhatsApp to ${approverNumber}:`, error.message)
-            // No fallar la creación de la planilla por error en WhatsApp
-          }
-        }
-      } else {
-        console.log('⚪ WhatsApp notifications disabled or not configured')
-      }
-    } catch (error: any) {
-      console.error('❌ Error in WhatsApp notification flow:', error.message)
-      // No fallar la creación de la planilla por error en WhatsApp
+      console.log(`✅ Notificación por email enviada a aprobadores`)
+    } catch (notifyError: any) {
+      // No fallar si la notificación falla, solo loguear
+      console.error('⚠️ Error enviando notificación por email:', notifyError.message)
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Planilla de movilidad guardada exitosamente. Pendiente de aprobación.',
+      message: `Planilla ${correlativo} guardada exitosamente. Pendiente de aprobación.`,
       planilla,
+      correlativo,
       gastosCreados: planilla.gastos.length,
     })
   } catch (error: any) {

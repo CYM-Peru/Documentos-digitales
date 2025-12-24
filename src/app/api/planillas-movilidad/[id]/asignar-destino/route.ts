@@ -169,7 +169,7 @@ export async function POST(
           totalViaje: planillaActualizada.totalViaje,
           totalDia: planillaActualizada.totalDia,
           totalGeneral: planillaActualizada.totalGeneral,
-          usuario: planillaActualizada.user.email?.split('@')[0] || '',
+          usuario: planillaActualizada.user.email || '',
           nroRendicion: planillaActualizada.nroRendicion || undefined,
           nroCajaChica: planillaActualizada.nroCajaChica || undefined,
           tipoOperacion: planillaActualizada.tipoOperacion as 'RENDICION' | 'CAJA_CHICA',

@@ -16,8 +16,12 @@ datasource db {
 enum UserRole {
   SUPER_ADMIN
   ORG_ADMIN
-  USER
-  APROBADOR
+  USER_L1      // Usuario básico: solo planillas movilidad y gastos reparables
+  USER_L2      // Usuario intermedio: rendiciones, cajas chicas, planillas
+  USER_L3      // Asesor L3: planillas con selección de destino (rendición o caja chica)
+  VERIFICADOR  // Asocia planillas aprobadas a caja chica (filtrado por CodLocal)
+  APROBADOR    // Aprueba planillas (Amanda Arroyo)
+  STAFF        // Ve todo pero no aprueba
 
   @@schema("invoice_system")
 }
@@ -35,6 +39,7 @@ enum OperationType {
   RENDICION
   CAJA_CHICA
   PLANILLA_MOVILIDAD
+  GASTO_REPARABLE
 
   @@schema("invoice_system")
 }
@@ -56,6 +61,21 @@ enum OCRProvider {
   @@schema("invoice_system")
 }
 
+model Sede {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  codigo    String   @unique
+  codLocal  String?  // CodLocal para SQL Server (1=Arica, 11=Lurín, etc.)
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+
+  @@map("sedes")
+  @@schema("invoice_system")
+}
+
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -68,6 +88,7 @@ model Organization {
   invoices Invoice[]
   settings OrganizationSettings?
   planillasMovilidad MovilidadPlanilla[]
+  gastosReparables GastoReparablePlanilla[]
 
   @@map("organizations")
   @@schema("invoice_system")
@@ -76,21 +97,28 @@ model Organization {
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
+  username       String?  @unique // Usuario para login (ej: AARROYO) - case insensitive en auth
   name           String?
   phone          String?  // Número de WhatsApp para notificaciones (formato: 51999999999)
   passwordHash   String?
-  role           UserRole @default(USER)
+  role           UserRole @default(USER_L1)
   organizationId String
+  sedeId         String?  // Sede del usuario (Arica, Lurín, etc.)
+  modulosPermitidos String[] @default(["PLANILLAS"]) // Módulos que puede ver: PLANILLAS, RENDICIONES, CAJAS_CHICAS
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   active         Boolean  @default(true)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sede         Sede?        @relation(fields: [sedeId], references: [id])
   invoices     Invoice[]
   planillasCreadas MovilidadPlanilla[]
   planillasAprobadas MovilidadPlanilla[] @relation("AprobadorPlanillas")
+  gastosReparablesCreados GastoReparablePlanilla[]
+  gastosReparablesAprobados GastoReparablePlanilla[] @relation("AprobadorGastosReparables")
 
   @@index([organizationId])
+  @@index([sedeId])
   @@map("users")
   @@schema("invoice_system")
 }
@@ -289,7 +317,15 @@ model Invoice {
 
   // Gestión y Rendición
   nroRendicion      String? // Número de rendición (opcional, con alerta si vacío)
+  codLocal          String? // Código de local para cajas chicas
   tipoOperacion     OperationType @default(RENDICION) // Tipo: RENDICION o CAJA_CHICA
+
+  // Campos adicionales OCR y edición
+  anotacionManuscrita String? // Anotación manuscrita detectada por OCR
+  conceptoGasto       String? // Concepto del gasto extraído o editado
+  glosaEditada        String? // Glosa editada por el usuario
+  resumenItems        String? // Resumen de items de la factura
+  observacion         String? // Observaciones adicionales
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -356,6 +392,7 @@ model MovilidadPlanilla {
   aprobadoPorId     String?
   aprobadoEn        DateTime?
   comentariosAprobacion String?
+  camposConError    Json?        // 🆕 Array de campos marcados como erróneos en rechazo
   aplicadaEn        DateTime?  // 🆕 Fecha en que se aplicó a rendición/caja chica
 
   // Imagen escaneada (si aplica)
@@ -407,5 +444,143 @@ model MovilidadGasto {
 
   @@index([planillaId])
   @@map("movilidad_gastos")
+  @@schema("invoice_system")
+}
+
+model NotificationSettings {
+  id               String    @id @default(cuid())
+  notificationTime String    @default("09:00") // Hora en formato HH:MM
+  enabled          Boolean   @default(true)
+  lastSentAt       DateTime?
+
+  // Configuración SMTP para emails
+  smtpHost         String?   // smtp.gmail.com, smtp.office365.com, etc.
+  smtpPort         Int?      @default(587)
+  smtpUser         String?   // Email del remitente
+  smtpPass         String?   // Contraseña o App Password
+  smtpSecure       Boolean   @default(false) // true para puerto 465
+  emailFrom        String?   // Nombre del remitente "Sistema Cockpit <noreply@...>"
+
+  // Emails de aprobadores (separados por coma)
+  approverEmails   String?   // "aprobador1@empresa.com,aprobador2@empresa.com"
+
+  // Tipos de notificación habilitados
+  notifyOnNewPlanilla    Boolean @default(true)
+  notifyOnApproval       Boolean @default(true)
+  notifyOnRejection      Boolean @default(true)
+  notifyDailySummary     Boolean @default(true)
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("notification_settings")
+  @@schema("invoice_system")
+}
+
+// Tabla para correlativos de planillas de movilidad
+// Garantiza números únicos incluso con múltiples usuarios simultáneos
+model PlanillaCorrelativo {
+  id            String   @id @default(cuid())
+  serie         String   @unique // Año: "2025", "2026", etc.
+  ultimoNumero  Int      @default(0) // Último número usado
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("planilla_correlativos")
+  @@schema("invoice_system")
+}
+
+// ========== GASTOS REPARABLES ==========
+
+model GastoReparablePlanilla {
+  id                String         @id @default(cuid())
+  organizationId    String
+  userId            String
+
+  // Datos de la planilla
+  nroPlanilla       String?
+  razonSocial       String?        @default("CALZADOS AZALEIA PERU S.A.")
+  ruc               String?        @default("20374412524")
+  periodo           String?
+  fechaEmision      DateTime?
+  nombresApellidos  String
+  cargo             String
+  dni               String
+  centroCosto       String?
+
+  // Totales
+  totalGeneral      Float          @default(0)
+
+  // Destino
+  tipoOperacion     OperationType?
+  nroRendicion      String?
+  nroCajaChica      String?
+
+  // Aprobación
+  estadoAprobacion  AprobacionEstado @default(PENDIENTE_APROBACION)
+  aprobadoPorId     String?
+  aprobadoEn        DateTime?
+  comentariosAprobacion String?
+  camposConError    Json?
+
+  // Imagen
+  imageUrl          String?
+
+  // Metadatos
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relaciones
+  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aprobadoPor       User?          @relation("AprobadorGastosReparables", fields: [aprobadoPorId], references: [id])
+  items             GastoReparableItem[]
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([estadoAprobacion])
+  @@index([aprobadoPorId])
+  @@index([createdAt])
+  @@map("gasto_reparable_planillas")
+  @@schema("invoice_system")
+}
+
+model GastoReparableItem {
+  id          Int      @id @default(autoincrement())
+  planillaId  String
+
+  // Fecha del gasto
+  dia         Int?
+  mes         Int?
+  anio        Int?
+  fechaGasto  DateTime?
+
+  // Descripción
+  tipoDoc     String?
+  concepto    String?
+  tipoGasto   String?
+
+  // Monto
+  importe     Float    @default(0)
+
+  // Metadatos
+  createdAt   DateTime @default(now())
+
+  // Relación
+  planilla    GastoReparablePlanilla @relation(fields: [planillaId], references: [id], onDelete: Cascade)
+
+  @@index([planillaId])
+  @@map("gasto_reparable_items")
+  @@schema("invoice_system")
+}
+
+model GastoReparableCorrelativo {
+  id            String   @id @default(cuid())
+  serie         String   @unique
+  ultimoNumero  Int      @default(100000)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("gasto_reparable_correlativos")
   @@schema("invoice_system")
 }

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 /**
  * GET /api/planillas-movilidad/pendientes
  * Obtiene todas las planillas de movilidad de la organización
- * Solo accesible por usuarios con rol APROBADOR
+ * Solo accesible por usuarios con rol VERIFICADOR, SUPER_ADMIN, etc.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar que el usuario tiene permisos para ver planillas
-    const allowedRoles = ['APROBADOR', 'SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'SUPERVISOR']
+    const allowedRoles = ['VERIFICADOR', 'SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'SUPERVISOR', 'STAFF', 'APROBADOR']
     if (!allowedRoles.includes(session.user.role)) {
       return NextResponse.json(
         { error: 'No tienes permisos para ver esta información' },

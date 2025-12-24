@@ -33,7 +33,21 @@ export async function POST(
     // Verificar que tenemos los datos necesarios
     if (!invoice.rucEmisor || !invoice.documentTypeCode || !invoice.serieNumero || !invoice.totalAmount) {
       return NextResponse.json(
-        { error: 'Insufficient data to validate. Missing RUC, document type, series or amount.' },
+        { error: 'Datos insuficientes para validar. Falta RUC, tipo de documento, serie o monto.' },
+        { status: 400 }
+      )
+    }
+
+    // Solo validar tipos de documento que SUNAT soporta
+    // 01: Factura, 03: Boleta, 07: Nota Crédito, 08: Nota Débito
+    // NO validar: 12 (Recibo Honorarios), 98 (Recibo Simple), 99 (Ticket), MOVILIDAD
+    const tiposValidablesSunat = ['01', '03', '07', '08']
+    if (!tiposValidablesSunat.includes(invoice.documentTypeCode)) {
+      return NextResponse.json(
+        {
+          error: `Este tipo de documento (${invoice.documentTypeCode}) no requiere verificación SUNAT`,
+          info: 'Solo Facturas (01), Boletas (03), Notas de Crédito (07) y Notas de Débito (08) se verifican en SUNAT.'
+        },
         { status: 400 }
       )
     }

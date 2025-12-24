@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { hash } from 'bcryptjs'
+import { toTitleCase, formatEmail, formatUsername } from '@/lib/utils/formatters'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,17 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        username: true,
         role: true,
+        sedeId: true,
+        modulosPermitidos: true,
+        sede: {
+          select: {
+            id: true,
+            nombre: true,
+            codigo: true,
+          }
+        },
         createdAt: true,
         _count: {
           select: { invoices: true }
@@ -49,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, email, password, role } = await request.json()
+    const { name, email, password, role, username, sedeId } = await request.json()
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -70,21 +81,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if username already exists
+    if (username) {
+      const existingUsername = await prisma.user.findUnique({
+        where: { username: username.toUpperCase() },
+      })
+      if (existingUsername) {
+        return NextResponse.json(
+          { error: 'Username already exists' },
+          { status: 400 }
+        )
+      }
+    }
+
     const hashedPassword = await hash(password, 10)
+
+    // Formatear nombre a Title Case y email a minúsculas
+    const formattedName = toTitleCase(name)
+    const formattedEmail = formatEmail(email)
+    const formattedUsername = username ? formatUsername(username) : null
+
+    // Determinar módulos según rol
+    // USER_L1: solo planillas
+    // USER_L2 y USER_L3: rendiciones, cajas chicas, planillas
+    // Otros roles: todo
+    const getModulosPermitidos = (userRole: string) => {
+      if (userRole === 'USER_L1') return ['PLANILLAS']
+      if (userRole === 'USER_L2' || userRole === 'USER_L3') return ['PLANILLAS', 'RENDICIONES', 'CAJAS_CHICAS']
+      return ['PLANILLAS', 'RENDICIONES', 'CAJAS_CHICAS']
+    }
+    const modulosPermitidos = getModulosPermitidos(role || 'USER_L1')
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: formattedName,
+        email: formattedEmail,
+        username: formattedUsername,
         passwordHash: hashedPassword,
-        role: role || 'USER',
+        role: role || 'USER_L1',
+        sedeId: sedeId || null,
+        modulosPermitidos,
         organizationId: session.user.organizationId,
       },
       select: {
         id: true,
         name: true,
         email: true,
+        username: true,
         role: true,
+        sedeId: true,
+        sede: {
+          select: { nombre: true }
+        },
         createdAt: true,
       },
     })
@@ -117,7 +165,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ['USER', 'APROBADOR', 'ORG_ADMIN', 'SUPER_ADMIN']
+    const validRoles = ['USER_L1', 'USER_L2', 'USER_L3', 'VERIFICADOR', 'APROBADOR', 'STAFF', 'ORG_ADMIN', 'SUPER_ADMIN']
     if (!validRoles.includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role' },

@@ -281,12 +281,10 @@ export class PlanillaWhatsAppNotifier {
     const message = `🚗 *Nueva Planilla de Movilidad*
 
 📋 Usuario: *${params.userName}*
-💰 Monto Total: *S/ ${params.totalAmount.toFixed(2)}*
 
 ⏳ Pendiente de aprobación
 
-👉 Ingresa al sistema para revisar y aprobar:
-https://cockpit.azaleia.com.pe/aprobacion-planillas`
+👉 https://cockpit.azaleia.com.pe/aprobacion-planillas`
 
     return this.whatsappService.sendTextMessage({
       instanceName: params.instanceName,
@@ -305,15 +303,11 @@ https://cockpit.azaleia.com.pe/aprobacion-planillas`
     totalAmount: number
     planillaId: string
   }): Promise<boolean> {
-    const message = `✅ *Planilla de Movilidad APROBADA*
+    const message = `✅ *Planilla APROBADA*
 
-👤 Aprobada por: *${params.approverName}*
-💰 Monto: *S/ ${params.totalAmount.toFixed(2)}*
+👤 Por: *${params.approverName}*
 
-🎉 Tu planilla ha sido aprobada exitosamente
-
-👉 Ver detalles:
-https://cockpit.azaleia.com.pe`
+👉 https://cockpit.azaleia.com.pe`
 
     return this.whatsappService.sendTextMessage({
       instanceName: params.instanceName,
@@ -333,20 +327,57 @@ https://cockpit.azaleia.com.pe`
     reason?: string
     planillaId: string
   }): Promise<boolean> {
-    const message = `❌ *Planilla de Movilidad RECHAZADA*
+    const message = `❌ *Planilla RECHAZADA*
 
-👤 Rechazada por: *${params.approverName}*
-💰 Monto: *S/ ${params.totalAmount.toFixed(2)}*
-${params.reason ? `\n📝 Motivo: ${params.reason}` : ''}
+👤 Por: *${params.approverName}*
+${params.reason ? `📝 ${params.reason}` : ''}
 
-Por favor, revisa los detalles y vuelve a enviar
-
-👉 Ver detalles:
-https://cockpit.azaleia.com.pe`
+✏️ Editar: https://cockpit.azaleia.com.pe`
 
     return this.whatsappService.sendTextMessage({
       instanceName: params.instanceName,
       number: params.userPhone,
+      text: message,
+    })
+  }
+
+  /**
+   * Enviar resumen diario de planillas pendientes a un aprobador
+   */
+  async sendDailySummary(params: {
+    instanceName: string
+    approverPhone: string
+    approverName: string
+    planillas: Array<{
+      userName: string
+      totalAmount: number
+      createdAt: Date
+    }>
+  }): Promise<boolean> {
+    if (params.planillas.length === 0) {
+      console.log('No hay planillas pendientes, no se envía resumen')
+      return true
+    }
+
+    const totalAmount = params.planillas.reduce((sum, p) => sum + p.totalAmount, 0)
+
+    let planillasList = params.planillas.map((p, index) =>
+      `${index + 1}. ${p.userName} - S/ ${p.totalAmount.toFixed(2)}`
+    ).join('\n')
+
+    const message = `📊 *RESUMEN DIARIO - Planillas*
+
+Hola *${params.approverName}*,
+
+📋 Pendientes: *${params.planillas.length}*
+
+👉 https://cockpit.azaleia.com.pe/aprobacion-planillas
+
+_Resumen automático_`
+
+    return this.whatsappService.sendTextMessage({
+      instanceName: params.instanceName,
+      number: params.approverPhone,
       text: message,
     })
   }

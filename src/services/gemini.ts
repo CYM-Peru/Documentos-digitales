@@ -46,246 +46,150 @@ export class GeminiService {
       const model = this.genAI.getGenerativeModel({ model: this.model })
 
       // Usar prompt personalizado si existe, sino usar el por defecto
-      const defaultPrompt = `Analiza este comprobante electrónico peruano (SUNAT) y extrae EXACTAMENTE los siguientes datos estructurados.
+      // Formato TOON (Token-Oriented Object Notation) - optimizado para LLMs
+      const defaultPrompt = `Extrae datos de este comprobante peruano. Retorna JSON.
 
-Este sistema procesa tres tipos de documentos:
-1. 📄 COMPROBANTES ELECTRÓNICOS (Facturas, Boletas, etc.) para Rendiciones y Cajas Chicas
-2. 💰 CAJAS CHICAS (Comprobantes de gastos menores sin factura formal)
-3. 🚗 PLANILLAS DE MOVILIDAD (Gastos de transporte y movilidad)
+TIPOS_DOCUMENTO
+documentType | documentTypeCode | identificadores
+FACTURA ELECTRÓNICA | 01 | título "FACTURA", serie F###
+BOLETA DE VENTA | 03 | título "BOLETA", serie B###
+NOTA DE CRÉDITO | 07 | título "NOTA DE CRÉDITO"
+NOTA DE DÉBITO | 08 | título "NOTA DE DÉBITO"
+RECIBO POR HONORARIOS | 12 | título "RECIBO POR HONORARIOS"
+RECIBO DE LUZ | SP | empresa luz (PLUZ, ENEL, LUZ DEL SUR), "Nro. Recibo"
+RECIBO DE AGUA | SP | empresa agua (SEDAPAL), "Nro. Recibo"
+RECIBO DE GAS | SP | empresa gas (CALIDDA), "Nro. Recibo"
+RECIBO DE SERVICIO | SP | otros servicios públicos, "Nro. Recibo"
+RECIBO DE TELÉFONO | SP | empresa telecom (MOVISTAR, CLARO, ENTEL, BITEL, TELEFÓNICA)
+RECIBO DE INTERNET | SP | servicio internet (MOVISTAR, CLARO, WIN)
+RECIBO SIMPLE | 98 | palabra "RECIBO", "Nº" en color rojo/destacado, sin serie formal
+TICKET/VALE | 99 | sin RUC, tickets de taxi/tienda/mercado
+PLANILLA MOVILIDAD | MOVILIDAD | formulario gastos transporte
 
-═══════════════════════════════════════════════════════════════════════════════
-📋 IDENTIFICACIÓN DEL TIPO DE DOCUMENTO
-═══════════════════════════════════════════════════════════════════════════════
+CAMPOS_EXTRAER
+campo | buscar | formato | notas
+documentType | título documento | string | según tabla TIPOS_DOCUMENTO
+documentTypeCode | - | string | código según tipo
+rucEmisor | "RUC:" 11 dígitos | ^[0-9]{11}$ | null si ticket simple
+razonSocialEmisor | después de RUC o cabecera | string | nombre negocio si no hay razón social
+vendorName | nombre comercial visible | string | igual a razonSocialEmisor
+domicilioFiscalEmisor | dirección fiscal | string | null en tickets
+serieNumero | serie-número | ^[BF][0-9]{3}-[0-9]+$ | ver NÚMERO_RECIBO para recibos simples
+invoiceNumber | igual serieNumero | string | número principal del documento
+invoiceDate | "FECHA" DD/MM/YYYY | YYYY-MM-DD | convertir formato peruano
+subtotal | "OP GRAVADA" "VALOR VENTA" | float | null en tickets sin IGV
+igvTasa | porcentaje IGV | float | 18.0 típico, null si no aplica
+igvMonto | monto IGV en soles | float | null en tickets sin IGV
+totalAmount | "TOTAL" "IMPORTE" "S/." "LA CANTIDAD DE" | float | SIEMPRE extraer, campo más importante
+currency | "S/" "PEN" "SOLES" | PEN/USD | default PEN
+rucReceptor | RUC cliente 11 dígitos | string | null si no existe
+dniReceptor | DNI cliente 8 dígitos | ^[0-9]{8}$ | null si no existe
+razonSocialReceptor | "RECIBÍ DE" nombre cliente | string | persona que paga
+qrCode | contenido QR SUNAT | string | formato RUC|TipoDoc|Serie|...|Hash
 
-1. Identifica el tipo de comprobante según SUNAT Catálogo 01:
-   - FACTURA ELECTRÓNICA → código "01"
-   - BOLETA DE VENTA ELECTRÓNICA → código "03"
-   - NOTA DE CRÉDITO ELECTRÓNICA → código "07"
-   - NOTA DE DÉBITO ELECTRÓNICA → código "08"
-   - GUÍA DE REMISIÓN ELECTRÓNICA → código "09"
-   - RECIBO POR HONORARIOS ELECTRÓNICO → código "12"
-   - COMPROBANTE DE RETENCIÓN ELECTRÓNICO → código "20"
-   - COMPROBANTE DE PERCEPCIÓN ELECTRÓNICO → código "40"
-   - TICKET/VALE (sin RUC) → código "99" (para Caja Chica)
-   - PLANILLA DE MOVILIDAD → código "MOVILIDAD" (documento interno)
+CRÍTICO_EMISOR_RECEPTOR (en recibos de servicios públicos/telecom)
+  EMISOR = empresa de servicios (quien emite/cobra)
+  RECEPTOR = cliente que paga
+  Ejemplo MOVISTAR: rucEmisor="20100017491", razonSocialEmisor="TELEFONICA DEL PERU S.A.A."
+  Ejemplo CLARO: rucEmisor="20467534026", razonSocialEmisor="AMERICA MOVIL PERU S.A.C."
+  Si ves "CALZADOS AZALEIA" en recibo de luz/teléfono → es el RECEPTOR, no emisor
 
-2. Busca el título del documento en la parte superior del comprobante.
-3. También puedes identificarlo por la serie: F### = Factura, B### = Boleta.
-4. IMPORTANTE - CAJAS CHICAS:
-   - Tickets sin RUC del emisor son válidos para Caja Chica
-   - Tickets de supermercados, farmacias, taxis, etc.
-   - Recibos simples sin serie ni RUC
-   - Boletas de venta de pequeños comercios
-5. IMPORTANTE - PLANILLAS DE MOVILIDAD:
-   - Documentos internos con gastos de transporte
-   - Pueden ser formularios impresos o manuscritos
-   - Incluyen: fecha, origen, destino, monto, motivo del viaje
+RUCs_SERVICIOS_COMUNES
+  20100017491 = TELEFONICA DEL PERU (MOVISTAR)
+  20467534026 = AMERICA MOVIL (CLARO)
+  20514194353 = ENTEL PERU
+  20601960550 = VIETTEL (BITEL)
+  20269985900 = ENEL DISTRIBUCION
+  20331898008 = LUZ DEL SUR
+  20100152356 = SEDAPAL
 
-═══════════════════════════════════════════════════════════════════════════════
-🔍 REGLAS DE EXTRACCIÓN Y VALIDACIÓN
-═══════════════════════════════════════════════════════════════════════════════
+NÚMERO_RECIBO (IMPORTANTE - buscar etiqueta explícita)
+  buscar_etiquetas: "Nro. Recibo" "Número de Recibo" "N° Recibo" "Nro Recibo" "Recibo N°" "Recibo Nro"
+  buscar_también: "Nº" "N°" "No." seguido de números (en recibos simples, usualmente en COLOR ROJO)
+  ubicación: esquina superior derecha, cerca del título, en COLOR ROJO o destacado
+  REGLA: el número está DESPUÉS de la etiqueta, NO antes
+  FORMATO_SALIDA: serie-numero → "1-XXXXXX" (serie "1", guión, número del recibo)
+  guardar_en: serieNumero e invoiceNumber
+  ejemplo: "Nº 001611" → serieNumero="1-001611", invoiceNumber="1-001611"
+  ejemplo: "Nº 001601" → serieNumero="1-001601", invoiceNumber="1-001601"
+  ejemplo: "Nro. Recibo: 12345678" → serieNumero="1-12345678"
 
-DATOS DEL EMISOR:
-- rucEmisor: RUC de 11 dígitos (formato: ^[0-9]{11}$)
-  ⚠️ IMPORTANTE PARA CAJA CHICA:
-  * Si es un ticket/vale SIN RUC visible → usa "00000000000" o null
-  * Tickets de taxi, tiendas pequeñas, mercados → pueden no tener RUC
-  * Esto es VÁLIDO para Caja Chica (gastos menores)
+RECIBOS_INTERNOS_AZALEIA (recibos de caja chica de la empresa)
+  identificar: título "calzados azaleia RECIBO" o "Azaleia Perú S.A."
+  rucEmisor: SIEMPRE "20374412524" (RUC de Azaleia Perú)
+  razonSocialEmisor: "CALZADOS AZALEIA PERU S.A." o "AZALEIA PERU S.A."
+  documentType: "RECIBO SIMPLE"
+  documentTypeCode: "98"
+  serieNumero: formato "1-XXXXXX" donde XXXXXX es el número en rojo (Nº)
+  campos_extraer:
+    - Nº XXXXXX (en rojo) → serieNumero "1-XXXXXX"
+    - Fecha (DD/MM/YY) → invoiceDate
+    - S/. XX.XX → totalAmount
+    - RECIBÍ DE → razonSocialReceptor (persona que recibe el dinero)
+    - POR CONCEPTO → descripción del gasto
 
-- razonSocialEmisor: Razón social completa (busca después de "RUC:" o en cabecera)
-  * Si no hay razón social, extrae el nombre del negocio visible
-  * Ejemplos: "TAXI", "BODEGA SAN MARTIN", "FARMACIA", etc.
+SERVICIOS_PÚBLICOS (Luz, Agua, Gas, Teléfono)
+  tipo_documento: "RECIBO DE SERVICIO" o específico ("RECIBO DE LUZ", "RECIBO DE AGUA")
+  documentTypeCode: "SP" (Servicio Público)
+  campos_específicos:
+    - Nro. Recibo / Número de Recibo → serieNumero, invoiceNumber
+    - Código de Suministro / Nro. Suministro → guardar en descripción
+    - Período / Mes de Consumo → guardar en descripción
+    - Total a Pagar / Importe Total → totalAmount
+    - Fecha de Vencimiento → invoiceDate
+    - RUC de la empresa de servicios → rucEmisor
+  empresas_comunes: PLUZ, ENEL, LUZ DEL SUR, SEDAPAL, CALIDDA
 
-- domicilioFiscalEmisor: Dirección fiscal completa del emisor
-  * Puede ser null en tickets simples
+FECHA_PERUANA
+  formato_entrada: DD/MM/YY o DD/MM/YYYY
+  formato_salida: YYYY-MM-DD
+  ejemplo: "21/10/25" → "2025-10-21"
+  primer_número: DÍA (01-31)
+  segundo_número: MES (01-12)
 
-DATOS DEL RECEPTOR:
-- rucReceptor: RUC del cliente (11 dígitos, si existe)
-- dniReceptor: DNI del cliente (8 dígitos, formato: ^[0-9]{8}$, si existe)
-- razonSocialReceptor: Nombre o razón social del cliente
-  * En Cajas Chicas, generalmente es el nombre del empleado
+VALIDACIONES
+  facturas: subtotal + igvMonto ≈ totalAmount (±0.05)
+  tickets: solo totalAmount requerido
+  recibos: totalAmount + número recibo requeridos
 
-DATOS DEL COMPROBANTE:
-- serieNumero: Serie y correlativo (formatos válidos: ^[BF][0-9]{3}-[0-9]{8}$ o ^[A-Z][0-9]{3}-[0-9]+$)
-  Ejemplos: F001-00012345, B092-00272073
-
-- invoiceDate: Fecha de emisión en formato YYYY-MM-DD
-  ⚠️ IMPORTANTE - FORMATO DE FECHA PERUANA:
-  * Los comprobantes peruanos usan formato DD/MM/YYYY (día/mes/año)
-  * Ejemplo: "03/11/2025" = 3 de noviembre de 2025 → debes retornar "2025-11-03"
-  * Ejemplo: "15/01/2025" = 15 de enero de 2025 → debes retornar "2025-01-15"
-  * NO confundas día con mes: el primer número es siempre el DÍA (01-31)
-  * El segundo número es siempre el MES (01-12)
-  * Busca: "FECHA DE EMISIÓN", "FECHA EMIS", "EMITIDO EL", "FECHA:"
-
-MONTOS Y TOTALES:
-- subtotal: OP GRAVADA o "Valor de Venta" (base imponible SIN IGV)
-  Busca: "OP GRAVADA", "OP. GRAVADA", "BASE IMPONIBLE", "VALOR VENTA"
-
-  ⚠️ CASOS ESPECIALES:
-  * CAJA CHICA - Tickets sin IGV desglosado:
-    - Si solo muestra "TOTAL", usa ese valor como totalAmount
-    - subtotal puede ser null o igual a totalAmount
-    - igvMonto puede ser 0 o null
-
-  * PLANILLAS DE MOVILIDAD:
-    - El "monto" o "importe" es el totalAmount
-    - subtotal e IGV generalmente no aplican
-
-- igvMonto: Monto del IGV (NO el porcentaje, busca el monto en soles/dólares)
-  Busca: "I.G.V.", "IGV 18%", "IMPUESTO"
-  * En tickets de Caja Chica sin IGV desglosado → usa 0 o null
-
-- igvTasa: Tasa del IGV (generalmente 18.0, pero puede ser 10.0 o derivarse del cálculo)
-  Si no está explícita, calcular: igvTasa = (igvMonto / subtotal) * 100
-  * En tickets sin IGV → usa 0 o null
-
-- totalAmount: IMPORTE TOTAL o "TOTAL A PAGAR" (incluye IGV)
-  Busca: "TOTAL A PAGAR", "IMPORTE TOTAL", "TOTAL S/", "TOTAL", "MONTO"
-  * En Caja Chica: puede ser el único monto visible → SIEMPRE extrae este valor
-  * En Planillas de Movilidad: busca "TOTAL VIAJE", "TOTAL DÍA", "TOTAL GENERAL"
-
-- currency: Moneda (generalmente "PEN" para Soles, "USD" para Dólares)
-  Busca: "S/", "PEN", "SOLES" → PEN | "$", "USD", "DÓLARES" → USD
-  * Por defecto: "PEN" si no se especifica (Perú usa Soles)
-
-═══════════════════════════════════════════════════════════════════════════════
-✅ VALIDACIONES Y CONSISTENCIA
-═══════════════════════════════════════════════════════════════════════════════
-
-1. VALIDACIÓN DE CÁLCULOS:
-   Para COMPROBANTES ELECTRÓNICOS formales:
-   - Verifica que: subtotal + igvMonto ≈ totalAmount (tolerancia: ±0.05)
-   - Verifica que: (subtotal * igvTasa/100) ≈ igvMonto (tolerancia: ±0.05)
-
-   Para CAJA CHICA (tickets simples):
-   - Si NO hay IGV desglosado → totalAmount es suficiente
-   - subtotal puede ser null o igual a totalAmount
-   - NO falles la validación si faltan datos de IGV
-
-   Para PLANILLAS DE MOVILIDAD:
-   - Solo valida que totalAmount sea consistente
-   - Suma de montos de viaje + montos de día debe coincidir con total general
-
-2. VALIDACIÓN DE FORMATOS:
-   - RUC: exactamente 11 dígitos numéricos (puede ser "00000000000" para Caja Chica)
-   - DNI: exactamente 8 dígitos numéricos
-   - Fecha: formato YYYY-MM-DD
-   - Serie: debe coincidir con el tipo de documento (puede ser null para Caja Chica)
-
-3. VALIDACIÓN DE CÓDIGO QR (si existe):
-   Si hay un código QR SUNAT, extrae el CONTENIDO COMPLETO del código QR.
-   El código QR de SUNAT contiene todos los datos del comprobante separados por "|"
-   Formato típico: RUC|TipoDoc|Serie|Numero|IGV|Total|Fecha|TipoDocReceptor|NumDocReceptor|Hash
-
-   IMPORTANTE: Extrae el texto completo del QR y retórnalo en el campo "qrCode"
-   Los datos del QR deben coincidir con los datos visuales del comprobante.
-
-═══════════════════════════════════════════════════════════════════════════════
-📤 FORMATO DE SALIDA JSON
-═══════════════════════════════════════════════════════════════════════════════
-
-Retorna ÚNICAMENTE un objeto JSON con esta estructura PLANA (NO anidada):
-
+OUTPUT_JSON (estructura plana, sin anidar)
 {
-  "documentType": "FACTURA ELECTRÓNICA",
-  "documentTypeCode": "01",
-  "vendorName": "Nombre comercial del emisor",
-  "rucEmisor": "20123456789",
-  "razonSocialEmisor": "EMPRESA S.A.C.",
-  "domicilioFiscalEmisor": "Av. Principal 123, Lima, Perú",
-  "serieNumero": "F001-00012345",
-  "invoiceNumber": "F001-00012345",
-  "invoiceDate": "2025-11-02",
-  "subtotal": 100.00,
-  "igvTasa": 18.0,
-  "igvMonto": 18.00,
-  "totalAmount": 118.00,
-  "currency": "PEN",
-  "rucReceptor": "20987654321",
-  "dniReceptor": null,
-  "razonSocialReceptor": "CLIENTE S.A.",
-  "qrCode": "20123456789|01|F001|00012345|18.00|118.00|02/11/2025|6|20987654321|xyz123"
+  "documentType": "string",
+  "documentTypeCode": "string",
+  "vendorName": "string|null",
+  "rucEmisor": "string|null",
+  "razonSocialEmisor": "string|null",
+  "domicilioFiscalEmisor": "string|null",
+  "serieNumero": "string|null",
+  "invoiceNumber": "string|null",
+  "invoiceDate": "YYYY-MM-DD|null",
+  "subtotal": "float|null",
+  "igvTasa": "float|null",
+  "igvMonto": "float|null",
+  "totalAmount": "float",
+  "currency": "PEN|USD",
+  "rucReceptor": "string|null",
+  "dniReceptor": "string|null",
+  "razonSocialReceptor": "string|null",
+  "qrCode": "string|null"
 }
 
-EJEMPLOS DE RESPUESTAS:
+EJEMPLOS
+tipo | serieNumero | totalAmount | rucEmisor
+FACTURA | F001-00012345 | 118.00 | 20123456789
+BOLETA | B092-00272073 | 50.00 | 20123456789
+RECIBO SIMPLE (Azaleia) | 1-001611 | 3.50 | 20374412524
+RECIBO SIMPLE (Azaleia) | 1-001601 | 100.00 | 20374412524
+RECIBO DE LUZ | S810-0005176310 | 9.50 | 20390413751
+RECIBO DE AGUA | 87654321 | 45.00 | 20100152356
+TICKET | null | 25.50 | null
 
-EJEMPLO 1 - Factura Electrónica (caso completo):
-{
-  "documentType": "FACTURA ELECTRÓNICA",
-  "documentTypeCode": "01",
-  "vendorName": "COMERCIAL XYZ",
-  "rucEmisor": "20123456789",
-  "razonSocialEmisor": "COMERCIAL XYZ S.A.C.",
-  "domicilioFiscalEmisor": "Av. Principal 123, Lima",
-  "serieNumero": "F001-00012345",
-  "invoiceNumber": "F001-00012345",
-  "invoiceDate": "2025-11-19",
-  "subtotal": 100.00,
-  "igvTasa": 18.0,
-  "igvMonto": 18.00,
-  "totalAmount": 118.00,
-  "currency": "PEN",
-  "rucReceptor": "20987654321",
-  "razonSocialReceptor": "EMPRESA ABC S.A."
-}
-
-EJEMPLO 2 - Ticket de Caja Chica (sin RUC, sin IGV desglosado):
-{
-  "documentType": "TICKET/VALE",
-  "documentTypeCode": "99",
-  "vendorName": "FARMACIA SAN JUAN",
-  "rucEmisor": null,
-  "razonSocialEmisor": "FARMACIA SAN JUAN",
-  "domicilioFiscalEmisor": null,
-  "serieNumero": null,
-  "invoiceNumber": null,
-  "invoiceDate": "2025-11-19",
-  "subtotal": null,
-  "igvTasa": null,
-  "igvMonto": null,
-  "totalAmount": 25.50,
-  "currency": "PEN",
-  "rucReceptor": null,
-  "razonSocialReceptor": "Juan Pérez"
-}
-
-EJEMPLO 3 - Planilla de Movilidad:
-{
-  "documentType": "PLANILLA DE MOVILIDAD",
-  "documentTypeCode": "MOVILIDAD",
-  "vendorName": "TRANSPORTE INTERNO",
-  "rucEmisor": null,
-  "razonSocialEmisor": null,
-  "domicilioFiscalEmisor": null,
-  "serieNumero": null,
-  "invoiceNumber": null,
-  "invoiceDate": "2025-11-19",
-  "subtotal": null,
-  "igvTasa": null,
-  "igvMonto": null,
-  "totalAmount": 150.00,
-  "currency": "PEN",
-  "rucReceptor": null,
-  "razonSocialReceptor": "María González"
-}
-
-IMPORTANTE:
-- NO uses objetos anidados como "emisor": {...} o "comprobante": {...}
-- TODOS los campos deben estar en el nivel raíz del JSON
-- serieNumero debe incluir la serie Y número completos (ej: "B092-00272073")
-- Para Caja Chica: campos como rucEmisor, serieNumero pueden ser null
-- Para Planillas: la mayoría de campos pueden ser null excepto totalAmount
-
-REGLAS FINALES:
-- Si un campo no existe o no se puede leer, usa null
-- Los números DEBEN ser números (Float), NO strings
-- Las fechas DEBEN ser strings en formato YYYY-MM-DD
-- NO incluyas comentarios en el JSON
-- NO incluyas texto adicional fuera del JSON
-- Responde SOLO con el JSON válido
-- FLEXIBILIDAD: No falles si faltan datos en tickets simples o planillas
-- PRIORIDAD: totalAmount es el campo MÁS IMPORTANTE, siempre extráelo`
+REGLAS
+- números: float NO string
+- fechas: string YYYY-MM-DD
+- null si no existe
+- SOLO JSON válido, sin texto extra
+- totalAmount SIEMPRE requerido`
 
       const prompt = this.customPrompt || defaultPrompt
 
@@ -334,6 +238,146 @@ REGLAS FINALES:
     } catch (error) {
       console.error('❌ Gemini Vision error:', error)
       throw new Error('Failed to analyze invoice with Gemini Vision')
+    }
+  }
+
+  /**
+   * Analiza una imagen de planilla de movilidad y extrae los datos estructurados
+   */
+  async analyzePlanillaMovilidad(imageBuffer: Buffer): Promise<{
+    nombresApellidos?: string
+    cargo?: string
+    dni?: string
+    centroCosto?: string
+    periodo?: string
+    gastos: Array<{
+      fechaGasto: string
+      motivo?: string
+      origen?: string
+      destino?: string
+      montoViaje: number
+    }>
+    totalViaje: number
+    totalGeneral: number
+  }> {
+    try {
+      console.log(`🚗 Gemini Vision - Analizando planilla de movilidad (${this.model})...`)
+
+      const model = this.genAI.getGenerativeModel({ model: this.model })
+
+      const prompt = `Analiza esta PLANILLA DE MOVILIDAD y extrae los datos estructurados.
+
+Una planilla de movilidad es un documento interno que registra gastos de transporte/movilidad de un trabajador.
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 DATOS A EXTRAER
+═══════════════════════════════════════════════════════════════════════════════
+
+DATOS DEL TRABAJADOR:
+- nombresApellidos: Nombre completo del trabajador (busca: "NOMBRES Y APELLIDOS", "TRABAJADOR", "NOMBRE")
+- cargo: Puesto o cargo del trabajador (busca: "CARGO", "PUESTO")
+- dni: Documento de identidad (8 dígitos, busca: "DNI", "DOCUMENTO")
+- centroCosto: Centro de costo o área (busca: "CENTRO DE COSTO", "ÁREA", "DEPARTAMENTO")
+- periodo: Período de la planilla (busca: "PERIODO", "MES", formato: "NOVIEMBRE 2025" o similar)
+
+DETALLE DE GASTOS (lista de viajes):
+Para cada fila/registro de gasto, extrae:
+- fechaGasto: Fecha del viaje en formato YYYY-MM-DD
+  ⚠️ IMPORTANTE: Las fechas peruanas son DD/MM/YYYY (día/mes/año)
+  Ejemplo: "03/11/2025" = 3 de noviembre → retorna "2025-11-03"
+- motivo: Motivo o razón del viaje (busca: "MOTIVO", "CONCEPTO", "DESCRIPCIÓN")
+- origen: Lugar de origen (busca: "ORIGEN", "DESDE", "DE")
+- destino: Lugar de destino (busca: "DESTINO", "HASTA", "A")
+- montoViaje: Monto del viaje en soles (busca: "IMPORTE", "MONTO", "S/")
+
+TOTALES:
+- totalViaje: Suma total de todos los montos de viaje
+- totalGeneral: Total general de la planilla
+
+═══════════════════════════════════════════════════════════════════════════════
+📤 FORMATO DE SALIDA JSON
+═══════════════════════════════════════════════════════════════════════════════
+
+{
+  "nombresApellidos": "JUAN CARLOS PÉREZ RODRÍGUEZ",
+  "cargo": "VENDEDOR",
+  "dni": "12345678",
+  "centroCosto": "VENTAS LIMA",
+  "periodo": "NOVIEMBRE 2025",
+  "gastos": [
+    {
+      "fechaGasto": "2025-11-01",
+      "motivo": "Visita a cliente",
+      "origen": "Oficina central",
+      "destino": "San Isidro",
+      "montoViaje": 15.00
+    },
+    {
+      "fechaGasto": "2025-11-01",
+      "motivo": "Retorno a oficina",
+      "origen": "San Isidro",
+      "destino": "Oficina central",
+      "montoViaje": 15.00
+    }
+  ],
+  "totalViaje": 30.00,
+  "totalGeneral": 30.00
+}
+
+REGLAS:
+- Si un campo no existe o no se puede leer, usa null (excepto gastos que debe ser array vacío)
+- Los montos DEBEN ser números (Float), NO strings
+- Las fechas DEBEN ser strings en formato YYYY-MM-DD
+- Extrae TODOS los gastos/viajes que veas en la planilla
+- Si hay una tabla de gastos, extrae cada fila como un elemento del array
+- Responde SOLO con el JSON válido, sin texto adicional`
+
+      const imageParts = [
+        {
+          inlineData: {
+            data: imageBuffer.toString('base64'),
+            mimeType: 'image/jpeg',
+          },
+        },
+      ]
+
+      const result = await model.generateContent([prompt, ...imageParts])
+      const response = await result.response
+      const text = response.text()
+
+      console.log('🚗 Gemini Vision - Respuesta planilla recibida')
+      console.log('📄 Gemini RAW Response (primeros 500 chars):', text.substring(0, 500))
+
+      // Extraer JSON de la respuesta
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.error('❌ Gemini no retornó JSON válido. Respuesta completa:', text)
+        throw new Error('Gemini no retornó JSON válido para planilla')
+      }
+
+      const data = JSON.parse(jsonMatch[0])
+
+      console.log('✅ Gemini Vision - Datos planilla extraídos:', {
+        nombresApellidos: data.nombresApellidos || 'NOT FOUND',
+        cargo: data.cargo || 'NOT FOUND',
+        dni: data.dni || 'NOT FOUND',
+        gastosCount: data.gastos?.length || 0,
+        totalGeneral: data.totalGeneral || 0,
+      })
+
+      return {
+        nombresApellidos: data.nombresApellidos || null,
+        cargo: data.cargo || null,
+        dni: data.dni || null,
+        centroCosto: data.centroCosto || null,
+        periodo: data.periodo || null,
+        gastos: data.gastos || [],
+        totalViaje: data.totalViaje || 0,
+        totalGeneral: data.totalGeneral || 0,
+      }
+    } catch (error) {
+      console.error('❌ Gemini Vision planilla error:', error)
+      throw new Error('Failed to analyze planilla with Gemini Vision')
     }
   }
 }

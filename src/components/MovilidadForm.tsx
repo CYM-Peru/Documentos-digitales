@@ -11,29 +11,43 @@ interface MovilidadGasto {
   montoViaje?: number
 }
 
+interface Rendicion {
+  CodUserAsg: string
+  CodEstado: string
+  NroRend: number
+  CodLocal?: string
+}
+
+interface CajaChica {
+  CodLocal: number
+  NroRend: number
+  CodUserAsg: string
+  CodEstado: string
+  DesEmpresa?: string
+}
+
 interface MovilidadFormProps {
-  operationType: 'RENDICION' | 'CAJA_CHICA'
-  nroAsignado?: string
   onCancel: () => void
   onSuccess: () => void
 }
 
 export default function MovilidadForm({
-  operationType,
-  nroAsignado,
   onCancel,
   onSuccess,
 }: MovilidadFormProps) {
   const { data: session } = useSession()
   const [mode, setMode] = useState<'select' | 'ocr' | 'manual'>('select')
   const [loading, setLoading] = useState(false)
+  const [ocrProcessing, setOcrProcessing] = useState(false)
+  const [ocrError, setOcrError] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null)
 
   // Datos de la planilla
   const [nroPlanilla, setNroPlanilla] = useState('')
   const [razonSocial, setRazonSocial] = useState('CALZADOS AZALEIA PERU S.A.')
-  const [ruc, setRuc] = useState('20374412524')
+  const [ruc, setRuc] = useState('90000000004')
   const [periodo, setPeriodo] = useState('')
   const [fechaEmision, setFechaEmision] = useState(new Date().toISOString().split('T')[0])
   const [nombresApellidos, setNombresApellidos] = useState('')
@@ -41,15 +55,14 @@ export default function MovilidadForm({
   const [dni, setDni] = useState('')
   const [centroCosto, setCentroCosto] = useState('')
 
-  // 🆕 Destino de la planilla (opcional - puede asignarse después)
+  // Solo para USER_L3: Selección de destino (rendición o caja chica)
+  const isUserL3 = session?.user?.role === 'USER_L3'
   const [tipoOperacion, setTipoOperacion] = useState<'RENDICION' | 'CAJA_CHICA' | ''>('')
   const [nroRendicion, setNroRendicion] = useState('')
-  const [nroCajaChica, setNroCajaChica] = useState('')
+  const [rendiciones, setRendiciones] = useState<Rendicion[]>([])
+  const [loadingRendiciones, setLoadingRendiciones] = useState(false)
 
-  // 🆕 Listas de rendiciones y cajas chicas disponibles
-  const [rendicionesDisponibles, setRendicionesDisponibles] = useState<any[]>([])
-  const [cajasChicasDisponibles, setCajasChicasDisponibles] = useState<any[]>([])
-  const [loadingDestinos, setLoadingDestinos] = useState(false)
+  // Nota: La asignación a caja chica/rendición se hace después por el VERIFICADOR (excepto USER_L3)
 
   // Gastos
   const [gastos, setGastos] = useState<MovilidadGasto[]>([
@@ -63,47 +76,27 @@ export default function MovilidadForm({
     }
   }, [session])
 
-  // 🆕 Cargar rendiciones cuando se selecciona RENDICION
+  // Cargar rendiciones cuando USER_L3 selecciona RENDICION
   useEffect(() => {
-    if (tipoOperacion === 'RENDICION') {
-      const fetchRendiciones = async () => {
+    if (isUserL3 && tipoOperacion === 'RENDICION') {
+      const loadRendiciones = async () => {
+        setLoadingRendiciones(true)
         try {
-          setLoadingDestinos(true)
           const response = await fetch('/api/rendiciones')
           const data = await response.json()
-          if (data.success) {
-            setRendicionesDisponibles(data.rendiciones || [])
+          if (data.success || data.rendiciones) {
+            setRendiciones(data.rendiciones || [])
           }
         } catch (error) {
-          console.error('Error cargando rendiciones:', error)
+          console.error('Error loading rendiciones:', error)
         } finally {
-          setLoadingDestinos(false)
+          setLoadingRendiciones(false)
         }
       }
-      fetchRendiciones()
+      loadRendiciones()
     }
-  }, [tipoOperacion])
+  }, [isUserL3, tipoOperacion])
 
-  // 🆕 Cargar cajas chicas cuando se selecciona CAJA_CHICA
-  useEffect(() => {
-    if (tipoOperacion === 'CAJA_CHICA') {
-      const fetchCajasChicas = async () => {
-        try {
-          setLoadingDestinos(true)
-          const response = await fetch('/api/cajas-chicas')
-          const data = await response.json()
-          if (data.success) {
-            setCajasChicasDisponibles(data.cajasChicas || [])
-          }
-        } catch (error) {
-          console.error('Error cargando cajas chicas:', error)
-        } finally {
-          setLoadingDestinos(false)
-        }
-      }
-      fetchCajasChicas()
-    }
-  }, [tipoOperacion])
 
   const agregarGasto = () => {
     setGastos([...gastos, { fechaGasto: new Date().toISOString().split('T')[0], motivo: '', origen: '', destino: '', montoViaje: 0 }])
@@ -126,15 +119,70 @@ export default function MovilidadForm({
     return { totalViaje, totalGeneral: totalViaje }
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setImageFile(file)
+      setOcrError(null)
+
+      // Mostrar preview
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreview(reader.result as string)
       }
       reader.readAsDataURL(file)
+
+      // Procesar con OCR automáticamente
+      setOcrProcessing(true)
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/planillas-movilidad/ocr', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Error procesando imagen')
+        }
+
+        if (result.success && result.data) {
+          // Poblar campos con datos extraídos
+          const data = result.data
+
+          if (data.nombresApellidos) setNombresApellidos(data.nombresApellidos)
+          if (data.cargo) setCargo(data.cargo)
+          if (data.dni) setDni(data.dni)
+          if (data.centroCosto) setCentroCosto(data.centroCosto)
+          if (data.periodo) setPeriodo(data.periodo)
+
+          // Poblar gastos si hay
+          if (data.gastos && data.gastos.length > 0) {
+            setGastos(data.gastos.map((g: any) => ({
+              fechaGasto: g.fechaGasto || new Date().toISOString().split('T')[0],
+              motivo: g.motivo || '',
+              origen: g.origen || '',
+              destino: g.destino || '',
+              montoViaje: g.montoViaje || 0,
+            })))
+          }
+
+          // Guardar URL de imagen
+          if (result.imageUrl) {
+            setSavedImageUrl(result.imageUrl)
+          }
+
+          console.log('✅ OCR completado, datos poblados')
+        }
+      } catch (error: any) {
+        console.error('OCR Error:', error)
+        setOcrError(error.message || 'Error procesando la imagen')
+      } finally {
+        setOcrProcessing(false)
+      }
     }
   }
 
@@ -143,10 +191,10 @@ export default function MovilidadForm({
     try {
       const totales = calcularTotales()
 
-      // Preparar datos
+      // Preparar datos (el correlativo se asigna automáticamente en el backend)
       const planillaData: any = {
         id: `movilidad-${Date.now()}`,
-        nroPlanilla,
+        // nroPlanilla se genera automáticamente en el backend
         razonSocial,
         ruc,
         periodo,
@@ -169,21 +217,19 @@ export default function MovilidadForm({
         })),
       }
 
-      // 🆕 Asignar destino si se seleccionó
-      if (tipoOperacion === 'RENDICION') {
-        planillaData.tipoOperacion = 'RENDICION'
-        planillaData.nroRendicion = nroRendicion
-      } else if (tipoOperacion === 'CAJA_CHICA') {
-        planillaData.tipoOperacion = 'CAJA_CHICA'
-        planillaData.nroCajaChica = nroCajaChica
+      // La asignación a caja chica/rendición se hace después por el VERIFICADOR (excepto USER_L3)
+      // USER_L3 puede asignar destino al crear la planilla
+      if (isUserL3 && tipoOperacion) {
+        planillaData.tipoOperacion = tipoOperacion
+        if (tipoOperacion === 'RENDICION' && nroRendicion) {
+          planillaData.nroRendicion = nroRendicion
+        }
+        // Si es CAJA_CHICA, no se asigna número, se envía con codLocal 1
       }
-      // Si no se asignó, los campos quedan como null
 
-      // Si hay imagen (modo OCR), subirla primero
-      if (imageFile && imagePreview) {
-        // Aquí se podría integrar con el sistema de upload existente
-        // Por ahora, guardaremos la referencia
-        planillaData.imageUrl = imagePreview
+      // Si hay imagen procesada, usar la URL guardada del servidor
+      if (savedImageUrl) {
+        planillaData.imageUrl = savedImageUrl
       }
 
       // Guardar planilla
@@ -268,33 +314,64 @@ export default function MovilidadForm({
               accept="image/*"
               capture="environment"
               onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              disabled={ocrProcessing}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
             />
           </div>
 
           {imagePreview && (
-            <div className="mb-6">
+            <div className="mb-6 relative">
               <img src={imagePreview} alt="Preview" className="w-full rounded-xl border-2 border-gray-200" />
+              {ocrProcessing && (
+                <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                  <div className="bg-white rounded-xl p-6 text-center">
+                    <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-800 font-semibold">Procesando con IA...</p>
+                    <p className="text-sm text-gray-500 mt-1">Extrayendo datos de la planilla</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <p className="text-sm text-amber-800">
-              <strong>Nota:</strong> Después de capturar la imagen, completa manualmente los datos extraídos.
-            </p>
-          </div>
+          {ocrError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <p className="text-sm text-red-800">
+                <strong>Error:</strong> {ocrError}
+              </p>
+              <p className="text-xs text-red-600 mt-1">Puedes continuar e ingresar los datos manualmente.</p>
+            </div>
+          )}
+
+          {!ocrProcessing && imageFile && !ocrError && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+              <p className="text-sm text-green-800">
+                <strong>✓ Imagen procesada.</strong> Los datos han sido extraídos automáticamente.
+              </p>
+              <p className="text-xs text-green-600 mt-1">Revisa y corrige los datos en el siguiente paso si es necesario.</p>
+            </div>
+          )}
+
+          {!imageFile && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Tip:</strong> Toma una foto clara de la planilla. La IA extraerá automáticamente los datos del trabajador y los gastos.
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-4">
             <button
               onClick={() => setMode('manual')}
-              disabled={!imageFile}
+              disabled={!imageFile || ocrProcessing}
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition-colors"
             >
-              Continuar con datos
+              {ocrProcessing ? 'Procesando...' : 'Continuar con datos'}
             </button>
             <button
               onClick={() => setMode('select')}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition-colors"
+              disabled={ocrProcessing}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
             >
               Volver
             </button>
@@ -332,11 +409,12 @@ export default function MovilidadForm({
                 <label className="block text-sm font-medium text-gray-700 mb-1">N° Planilla</label>
                 <input
                   type="text"
-                  value={nroPlanilla}
-                  onChange={(e) => setNroPlanilla(e.target.value)}
-                  className="w-full max-w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 text-sm md:text-base"
-                  placeholder="012767"
+                  value=""
+                  disabled
+                  className="w-full max-w-full px-3 md:px-4 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 text-sm md:text-base cursor-not-allowed"
+                  placeholder="Se asigna al guardar"
                 />
+                <p className="text-xs text-amber-600 mt-1">Correlativo automático</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
@@ -425,129 +503,71 @@ export default function MovilidadForm({
             </div>
           </div>
 
-          {/* 🆕 Destino de la Planilla (Opcional) */}
-          <div className="bg-blue-50 rounded-xl p-6 border-2 border-blue-200">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Asignar a Rendición o Caja Chica (Opcional)</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Puedes asignar esta planilla a una rendición o caja chica ahora, o dejarlo para después de la aprobación.
-            </p>
+          {/* Selector de Destino - Solo para USER_L3 */}
+          {isUserL3 && (
+            <div className="bg-purple-50 rounded-xl p-4 md:p-6 border-2 border-purple-200">
+              <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4">
+                Asignar a Rendición o Caja Chica
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Como Asesor L3, puedes asociar esta planilla directamente a una rendición o caja chica.
+              </p>
 
-            <div className="space-y-4">
-              {/* Selector de tipo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ¿Deseas asignar esta planilla ahora?
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipoOperacion"
-                      value=""
-                      checked={tipoOperacion === ''}
-                      onChange={(e) => {
-                        setTipoOperacion('')
-                        setNroRendicion('')
-                        setNroCajaChica('')
-                      }}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm font-medium text-gray-700">No asignar aún</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipoOperacion"
-                      value="RENDICION"
-                      checked={tipoOperacion === 'RENDICION'}
-                      onChange={(e) => setTipoOperacion('RENDICION')}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Rendición</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipoOperacion"
-                      value="CAJA_CHICA"
-                      checked={tipoOperacion === 'CAJA_CHICA'}
-                      onChange={(e) => setTipoOperacion('CAJA_CHICA')}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Caja Chica</span>
-                  </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Destino</label>
+                  <select
+                    value={tipoOperacion}
+                    onChange={(e) => {
+                      setTipoOperacion(e.target.value as 'RENDICION' | 'CAJA_CHICA' | '')
+                      setNroRendicion('') // Limpiar selección anterior
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 bg-white"
+                  >
+                    <option value="">-- Sin asignar (pendiente) --</option>
+                    <option value="RENDICION">Rendición de Cuentas</option>
+                    <option value="CAJA_CHICA">Caja Chica</option>
+                  </select>
                 </div>
+
+                {tipoOperacion === 'RENDICION' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Número de Rendición</label>
+                    {loadingRendiciones ? (
+                      <div className="flex items-center gap-2 text-gray-500 py-2">
+                        <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                        <span className="text-sm">Cargando rendiciones...</span>
+                      </div>
+                    ) : rendiciones.length > 0 ? (
+                      <select
+                        value={nroRendicion}
+                        onChange={(e) => setNroRendicion(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 bg-white"
+                      >
+                        <option value="">-- Seleccionar Rendición --</option>
+                        {rendiciones.map((r) => (
+                          <option key={r.NroRend} value={r.NroRend}>
+                            {r.NroRend} - {r.CodEstado === '00' ? 'Abierta' : 'Cerrada'}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-sm text-amber-600 py-2">No tienes rendiciones asignadas</p>
+                    )}
+                  </div>
+                )}
+
+                {tipoOperacion === 'CAJA_CHICA' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Caja Chica</label>
+                    <p className="text-sm text-purple-700 bg-purple-100 rounded-lg px-4 py-2">
+                      Se asignará automáticamente con CodLocal 1 (Arica)
+                    </p>
+                  </div>
+                )}
               </div>
-
-              {/* Selector de rendición */}
-              {tipoOperacion === 'RENDICION' && (
-                <div className="animate-fade-in-up">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Selecciona la Rendición
-                  </label>
-                  {loadingDestinos ? (
-                    <div className="flex items-center gap-2 text-gray-600 py-2">
-                      <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                      <span className="text-sm">Cargando rendiciones...</span>
-                    </div>
-                  ) : rendicionesDisponibles.length > 0 ? (
-                    <select
-                      value={nroRendicion}
-                      onChange={(e) => setNroRendicion(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-                    >
-                      <option value="">-- Seleccionar Rendición --</option>
-                      {rendicionesDisponibles.map((rend) => (
-                        <option key={rend.NroRend} value={rend.NroRend}>
-                          Rendición #{rend.NroRend}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <p className="text-sm text-yellow-800">
-                        No tienes rendiciones pendientes disponibles. Deberás asignar esta planilla después.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Selector de caja chica */}
-              {tipoOperacion === 'CAJA_CHICA' && (
-                <div className="animate-fade-in-up">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Selecciona la Caja Chica
-                  </label>
-                  {loadingDestinos ? (
-                    <div className="flex items-center gap-2 text-gray-600 py-2">
-                      <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                      <span className="text-sm">Cargando cajas chicas...</span>
-                    </div>
-                  ) : cajasChicasDisponibles.length > 0 ? (
-                    <select
-                      value={nroCajaChica}
-                      onChange={(e) => setNroCajaChica(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-                    >
-                      <option value="">-- Seleccionar Caja Chica --</option>
-                      {cajasChicasDisponibles.map((caja) => (
-                        <option key={caja.NroRend} value={caja.NroRend}>
-                          Caja Chica #{caja.NroRend}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <p className="text-sm text-yellow-800">
-                        No tienes cajas chicas pendientes disponibles. Deberás asignar esta planilla después.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
           {/* Gastos */}
           <div>

@@ -15,6 +15,39 @@ import { join } from 'path'
 import { existsSync } from 'fs'
 import sharp from 'sharp'
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📋 MAPA DE NORMALIZACIÓN DE TIPOS DE DOCUMENTO
+// ═══════════════════════════════════════════════════════════════════════════════
+const DOCUMENT_TYPE_MAP: Record<string, string> = {
+  '01': 'FACTURA ELECTRÓNICA',
+  '03': 'BOLETA DE VENTA ELECTRÓNICA',
+  '07': 'NOTA DE CRÉDITO ELECTRÓNICA',
+  '08': 'NOTA DE DÉBITO ELECTRÓNICA',
+  '09': 'GUÍA DE REMISIÓN ELECTRÓNICA',
+  '12': 'RECIBO POR HONORARIOS ELECTRÓNICO',
+  '20': 'COMPROBANTE DE RETENCIÓN ELECTRÓNICO',
+  '40': 'COMPROBANTE DE PERCEPCIÓN ELECTRÓNICO',
+  '99': 'TICKET/VALE',
+  'MOVILIDAD': 'PLANILLA DE MOVILIDAD',
+  'SP': 'RECIBO DE SERVICIOS PÚBLICOS',
+}
+
+/**
+ * Normaliza el tipo de documento si viene como código
+ */
+function normalizeDocumentType(documentType: string | undefined, documentTypeCode: string | undefined): string | undefined {
+  if (!documentType) return undefined
+
+  // Si el tipo de documento es solo un código (1-2 caracteres numéricos), normalizarlo
+  if (/^[0-9]{1,2}$/.test(documentType)) {
+    const padded = documentType.padStart(2, '0')
+    return DOCUMENT_TYPE_MAP[padded] || documentType
+  }
+
+  // Si ya es un nombre completo, devolverlo tal cual
+  return documentType
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -267,6 +300,9 @@ async function processInvoiceOCR(
         rawData: geminiData,
       }
 
+      // Normalizar tipo de documento si viene como código
+      ocrData.documentType = normalizeDocumentType(ocrData.documentType, ocrData.documentTypeCode)
+
       console.log('✅ Datos mapeados correctamente:', {
         rucEmisor: ocrData.rucEmisor,
         razonSocialEmisor: ocrData.razonSocialEmisor,
@@ -274,7 +310,52 @@ async function processInvoiceOCR(
         subtotal: ocrData.subtotal,
         igvMonto: ocrData.igvMonto,
         totalAmount: ocrData.totalAmount,
+        documentType: ocrData.documentType,
       })
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔄 RETRY AUTOMÁTICO SI FALTAN CAMPOS CRÍTICOS
+      // ═══════════════════════════════════════════════════════════════════
+      const camposCriticos = ['serieNumero', 'totalAmount', 'rucEmisor']
+      const missingCriticalFields = camposCriticos.filter(campo => !ocrData[campo])
+
+      if (missingCriticalFields.length > 0) {
+        console.log(`⚠️ Campos críticos faltantes: ${missingCriticalFields.join(', ')} - Reintentando OCR...`)
+
+        // Esperar 1 segundo antes de reintentar
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        try {
+          const retryData = await geminiService.analyzeInvoice(imageBuffer)
+          const retryRawData = (retryData as any).rawData || retryData
+          const retryEmisor = retryRawData.emisor || {}
+          const retryComprobante = retryRawData.comprobante || {}
+          const retryMontos = retryRawData.montos || {}
+
+          // Combinar datos: usar retry para campos faltantes
+          if (!ocrData.serieNumero) {
+            ocrData.serieNumero = retryComprobante.serieNumero || retryData.serieNumero
+            ocrData.invoiceNumber = ocrData.serieNumero
+          }
+          if (!ocrData.totalAmount) {
+            ocrData.totalAmount = retryMontos.importeTotal || retryData.totalAmount
+          }
+          if (!ocrData.rucEmisor) {
+            ocrData.rucEmisor = retryEmisor.ruc || retryData.rucEmisor
+          }
+          if (!ocrData.razonSocialEmisor) {
+            ocrData.razonSocialEmisor = retryEmisor.razonSocial || retryData.razonSocialEmisor
+          }
+
+          console.log('🔄 Datos después del retry:', {
+            serieNumero: ocrData.serieNumero,
+            totalAmount: ocrData.totalAmount,
+            rucEmisor: ocrData.rucEmisor,
+          })
+        } catch (retryError) {
+          console.error('❌ Error en retry OCR:', retryError)
+        }
+      }
     }
     // FALLBACK: Google Cloud Vision OCR (método antiguo)
     else if (settings.googleServiceAccount) {
@@ -333,11 +414,28 @@ async function processInvoiceOCR(
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // ⚠️ VALIDACIÓN FINAL Y STATUS
+    // ═══════════════════════════════════════════════════════════════════
+    const camposFaltantes: string[] = []
+    if (!ocrData.serieNumero) camposFaltantes.push('Número de documento')
+    if (!ocrData.totalAmount) camposFaltantes.push('Monto total')
+    if (!ocrData.rucEmisor) camposFaltantes.push('RUC emisor')
+
+    let finalStatus: 'COMPLETED' | 'NEEDS_REVIEW' = 'COMPLETED'
+    let warningMessage: string | undefined
+
+    if (camposFaltantes.length > 0) {
+      finalStatus = 'NEEDS_REVIEW'
+      warningMessage = `Campos no detectados: ${camposFaltantes.join(', ')}. Por favor revise y complete manualmente.`
+      console.log(`⚠️ Documento marcado para revisión: ${warningMessage}`)
+    }
+
     // Update invoice with OCR data + duplicate detection + QR code
     await prisma.invoice.update({
       where: { id: invoiceId },
       data: {
-        status: 'COMPLETED',
+        status: finalStatus as any,
         ocrData: ocrData,
         rawOcrResponse: ocrData.rawData,
         vendorName: ocrData.vendorName,

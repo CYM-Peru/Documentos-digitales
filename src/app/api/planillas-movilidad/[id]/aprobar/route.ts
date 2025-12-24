@@ -4,12 +4,12 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { SqlServerService } from '@/services/sqlserver'
 import { decrypt } from '@/lib/encryption'
-import { PlanillaWhatsAppNotifier } from '@/services/whatsapp'
+import { PlanillaEmailService } from '@/services/planilla-email'
 
 /**
  * POST /api/planillas-movilidad/[id]/aprobar
  * Aprueba o rechaza una planilla de movilidad
- * Solo usuarios con rol APROBADOR pueden usar este endpoint
+ * Solo usuarios con rol VERIFICADOR, SUPER_ADMIN, ORG_ADMIN o STAFF pueden usar este endpoint
  */
 export async function POST(
   request: NextRequest,
@@ -22,17 +22,19 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verificar que el usuario tiene rol APROBADOR
-    if (session.user.role !== 'APROBADOR') {
+    // Verificar que el usuario tiene rol de aprobación
+    // Solo APROBADOR y SUPER_ADMIN pueden aprobar planillas
+    const canApprove = ['APROBADOR', 'SUPER_ADMIN'].includes(session.user.role)
+    if (!canApprove) {
       return NextResponse.json(
-        { error: 'Solo usuarios con rol APROBADOR pueden aprobar planillas' },
+        { error: 'No tienes permisos para aprobar planillas. Solo el rol APROBADOR puede hacerlo.' },
         { status: 403 }
       )
     }
 
     const { id } = params
     const body = await request.json()
-    const { accion, comentarios } = body // accion: 'APROBAR' | 'RECHAZAR'
+    const { accion, comentarios, camposConError } = body // accion: 'APROBAR' | 'RECHAZAR'
 
     if (!accion || !['APROBAR', 'RECHAZAR'].includes(accion)) {
       return NextResponse.json(
@@ -41,7 +43,7 @@ export async function POST(
       )
     }
 
-    // Buscar la planilla
+    // Buscar la planilla (incluyendo sede del usuario para obtener codLocal)
     const planilla = await prisma.movilidadPlanilla.findUnique({
       where: { id },
       include: {
@@ -50,6 +52,12 @@ export async function POST(
           select: {
             name: true,
             email: true,
+            sede: {
+              select: {
+                codLocal: true,
+                nombre: true,
+              },
+            },
           },
         },
       },
@@ -87,6 +95,7 @@ export async function POST(
           aprobadoPorId: session.user.id,
           aprobadoEn: new Date(),
           comentariosAprobacion: comentarios || null,
+          camposConError: camposConError && camposConError.length > 0 ? camposConError : undefined,
         },
         include: {
           gastos: true,
@@ -106,44 +115,25 @@ export async function POST(
         },
       })
 
-      // 🆕 Enviar notificación WhatsApp al usuario (si está activado)
+      // 🔔 Enviar notificación por EMAIL al usuario
       try {
-        const settings = await prisma.organizationSettings.findFirst({
-          where: { organizationId: session.user.organizationId },
-        })
-
-        if (
-          settings?.whatsappEnabled &&
-          settings?.whatsappConnected &&
-          settings?.whatsappNotifyPlanillaRejected &&
-          settings?.whatsappInstanceName &&
-          planillaActualizada.user.phone
-        ) {
-          console.log('📱 WhatsApp enabled - sending rejection notification to user')
-
-          const notifier = new PlanillaWhatsAppNotifier(
-            settings.whatsappApiUrl || undefined,
-            settings.whatsappApiKey || undefined
-          )
-
-          try {
-            await notifier.notifyPlanillaRejected({
-              instanceName: settings.whatsappInstanceName,
-              userPhone: planillaActualizada.user.phone,
-              approverName: planillaActualizada.aprobadoPor?.name || session.user.name || session.user.email,
-              totalAmount: planillaActualizada.totalGeneral,
-              reason: comentarios,
-              planillaId: planillaActualizada.id,
-            })
-            console.log(`✅ WhatsApp rejection notification sent to user`)
-          } catch (error: any) {
-            console.error(`❌ Error sending WhatsApp rejection notification:`, error.message)
-          }
-        } else {
-          console.log('⚪ WhatsApp rejection notifications disabled or user has no phone')
-        }
+        const emailService = new PlanillaEmailService()
+        await emailService.notifyRejected(
+          {
+            planillaId: planillaActualizada.id,
+            nroPlanilla: planillaActualizada.nroPlanilla || '',
+            userName: planillaActualizada.user.name || 'Usuario',
+            userEmail: planillaActualizada.user.email || undefined,
+            totalAmount: planillaActualizada.totalGeneral,
+            gastoCount: planillaActualizada.gastos.length,
+            createdAt: planillaActualizada.createdAt
+          },
+          planillaActualizada.aprobadoPor?.name || session.user.name || session.user.email,
+          comentarios
+        )
+        console.log(`✅ Email de rechazo enviado al usuario`)
       } catch (error: any) {
-        console.error('❌ Error in WhatsApp rejection notification flow:', error.message)
+        console.error('⚠️ Error enviando email de rechazo:', error.message)
       }
 
       return NextResponse.json({
@@ -169,6 +159,12 @@ export async function POST(
             name: true,
             email: true,
             phone: true,
+            sede: {
+              select: {
+                codLocal: true,
+                nombre: true,
+              },
+            },
           },
         },
         aprobadoPor: {
@@ -193,6 +189,50 @@ export async function POST(
 
     if (settings?.sqlServerHost) {
       try {
+        // Obtener codLocal de la sede del usuario (1=Arica, 11=Lurín)
+        const userCodLocal = planillaActualizada.user.sede?.codLocal || undefined
+        console.log(`📍 CodLocal de sede del usuario: ${userCodLocal} (${planillaActualizada.user.sede?.nombre || 'Sin sede'})`)
+
+        // Conectar a SQL Server
+        const sqlService = new SqlServerService({
+          server: decrypt(settings.sqlServerHost),
+          database: settings.sqlServerDatabase!,
+          user: decrypt(settings.sqlServerUser!),
+          password: decrypt(settings.sqlServerPassword!),
+          port: settings.sqlServerPort || 1433,
+          encrypt: settings.sqlServerEncrypt,
+          trustServerCertificate: settings.sqlServerTrustCert,
+        })
+
+        // 🆕 AUTO-ASIGNAR CAJA CHICA si no tiene rendición asignada
+        // Si el usuario (USER_L3) seleccionó RENDICION, se mantiene su selección
+        // Si no, se auto-asigna la caja chica abierta del CodLocal del usuario
+        let nroCajaChicaFinal = planillaActualizada.nroCajaChica
+        let tipoOperacionFinal = planillaActualizada.tipoOperacion
+
+        // Si no tiene rendición asignada (no es USER_L3 con RENDICION), buscar caja chica
+        if (!planillaActualizada.nroRendicion && userCodLocal) {
+          console.log(`🔍 Buscando caja chica abierta para CodLocal: ${userCodLocal}`)
+          const cajaChica = await sqlService.getCajaChicaByCodLocal(userCodLocal)
+
+          if (cajaChica) {
+            nroCajaChicaFinal = cajaChica.NroRend.toString()
+            tipoOperacionFinal = 'CAJA_CHICA'
+            console.log(`✅ Auto-asignando caja chica: ${nroCajaChicaFinal} (${cajaChica.CodUserAsg})`)
+
+            // Actualizar la planilla en PostgreSQL con la caja chica asignada
+            await prisma.movilidadPlanilla.update({
+              where: { id },
+              data: {
+                nroCajaChica: nroCajaChicaFinal,
+                tipoOperacion: tipoOperacionFinal,
+              },
+            })
+          } else {
+            console.log(`⚠️ No se encontró caja chica abierta para CodLocal: ${userCodLocal}`)
+          }
+        }
+
         // Preparar datos para SQL Server (convertir null a undefined)
         const sqlData = {
           id: planillaActualizada.id,
@@ -208,15 +248,16 @@ export async function POST(
           totalViaje: planillaActualizada.totalViaje,
           totalDia: planillaActualizada.totalDia,
           totalGeneral: planillaActualizada.totalGeneral,
-          usuario: planillaActualizada.user.email?.split('@')[0] || '',
+          usuario: planillaActualizada.user.email || '',
           nroRendicion: planillaActualizada.nroRendicion || undefined,
-          nroCajaChica: planillaActualizada.nroCajaChica || undefined,
+          nroCajaChica: nroCajaChicaFinal || undefined,
           tipoOperacion:
-            planillaActualizada.tipoOperacion === 'RENDICION'
+            tipoOperacionFinal === 'RENDICION'
               ? ('RENDICION' as const)
-              : planillaActualizada.tipoOperacion === 'CAJA_CHICA'
+              : tipoOperacionFinal === 'CAJA_CHICA'
               ? ('CAJA_CHICA' as const)
               : undefined,
+          codLocal: userCodLocal, // CodLocal de la sede del usuario
           gastos: planillaActualizada.gastos.map((g) => ({
             fechaGasto: g.fechaGasto || undefined,
             dia: g.dia || undefined,
@@ -230,19 +271,15 @@ export async function POST(
           })),
         }
 
-        // Conectar a SQL Server
-        const sqlService = new SqlServerService({
-          server: decrypt(settings.sqlServerHost),
-          database: settings.sqlServerDatabase!,
-          user: decrypt(settings.sqlServerUser!),
-          password: decrypt(settings.sqlServerPassword!),
-          port: settings.sqlServerPort || 1433,
-          encrypt: settings.sqlServerEncrypt,
-          trustServerCertificate: settings.sqlServerTrustCert,
-        })
-
         // Insertar en SQL Server
         await sqlService.insertMovilidadPlanilla(sqlData)
+
+        // 🆕 Siempre insertar en CntCtaCajaChicaDocumentosIA si tiene caja chica o rendición
+        if (sqlData.nroCajaChica || sqlData.nroRendicion) {
+          console.log('📄 Insertando planilla en CntCtaCajaChicaDocumentosIA...')
+          await sqlService.insertMovilidadEnDocumentosIA(sqlData)
+        }
+
         await sqlService.close()
 
         sqlServerSaved = true
@@ -254,39 +291,24 @@ export async function POST(
       }
     }
 
-    // 🆕 Enviar notificación WhatsApp al usuario (si está activado)
+    // 🔔 Enviar notificación por EMAIL al usuario
     try {
-      if (
-        settings?.whatsappEnabled &&
-        settings?.whatsappConnected &&
-        settings?.whatsappNotifyPlanillaApproved &&
-        settings?.whatsappInstanceName &&
-        planillaActualizada.user.phone
-      ) {
-        console.log('📱 WhatsApp enabled - sending approval notification to user')
-
-        const notifier = new PlanillaWhatsAppNotifier(
-          settings.whatsappApiUrl || undefined,
-          settings.whatsappApiKey || undefined
-        )
-
-        try {
-          await notifier.notifyPlanillaApproved({
-            instanceName: settings.whatsappInstanceName,
-            userPhone: planillaActualizada.user.phone,
-            approverName: planillaActualizada.aprobadoPor?.name || session.user.name || session.user.email,
-            totalAmount: planillaActualizada.totalGeneral,
-            planillaId: planillaActualizada.id,
-          })
-          console.log(`✅ WhatsApp approval notification sent to user`)
-        } catch (error: any) {
-          console.error(`❌ Error sending WhatsApp approval notification:`, error.message)
-        }
-      } else {
-        console.log('⚪ WhatsApp approval notifications disabled or user has no phone')
-      }
+      const emailService = new PlanillaEmailService()
+      await emailService.notifyApproved(
+        {
+          planillaId: planillaActualizada.id,
+          nroPlanilla: planillaActualizada.nroPlanilla || '',
+          userName: planillaActualizada.user.name || 'Usuario',
+          userEmail: planillaActualizada.user.email || undefined,
+          totalAmount: planillaActualizada.totalGeneral,
+          gastoCount: planillaActualizada.gastos.length,
+          createdAt: planillaActualizada.createdAt
+        },
+        planillaActualizada.aprobadoPor?.name || session.user.name || session.user.email
+      )
+      console.log(`✅ Email de aprobación enviado al usuario`)
     } catch (error: any) {
-      console.error('❌ Error in WhatsApp approval notification flow:', error.message)
+      console.error('⚠️ Error enviando email de aprobación:', error.message)
     }
 
     return NextResponse.json({

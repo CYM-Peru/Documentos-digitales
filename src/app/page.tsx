@@ -56,6 +56,17 @@ interface Invoice {
   // Tipo de operación
   tipoOperacion?: string
   nroRendicion?: string
+  // Campos adicionales OCR y edición
+  anotacionManuscrita?: string
+  conceptoGasto?: string
+  glosaEditada?: string
+  resumenItems?: string
+  observacion?: string
+  // Usuario que creó la factura
+  user?: {
+    name?: string
+    email?: string
+  }
 }
 
 interface Rendicion {
@@ -64,6 +75,7 @@ interface Rendicion {
   NroRend: number
   CodLocal?: string
   NroCajaChica?: number
+  DesEmpresa?: string
 }
 
 interface CajaChica {
@@ -71,6 +83,7 @@ interface CajaChica {
   CodEstado: string
   NroRend: number
   CodLocal?: string
+  DesEmpresa?: string
 }
 
 export default function HomePage() {
@@ -85,6 +98,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const [estadoCierre, setEstadoCierre] = useState<'todas' | 'abiertas' | 'cerradas'>('abiertas') // Filtro abiertas/cerradas
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectionMode, setSelectionMode] = useState(false)
@@ -93,6 +107,7 @@ export default function HomePage() {
   const [uploadingFile, setUploadingFile] = useState<File | null>(null)
   const [pollingActive, setPollingActive] = useState(false)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [columnCount, setColumnCount] = useState<4 | 5 | 6>(6) // Selector de columnas
   const [nroRendicion, setNroRendicion] = useState('')
   const [rendiciones, setRendiciones] = useState<Rendicion[]>([])
   const [loadingRendiciones, setLoadingRendiciones] = useState(false)
@@ -101,7 +116,7 @@ export default function HomePage() {
   const [multiUploadProgress, setMultiUploadProgress] = useState<Array<{fileName: string, status: 'pending' | 'uploading' | 'success' | 'error', error?: string}>>([])
   const [showMultiUploadProgress, setShowMultiUploadProgress] = useState(false)
   const [showLogoutAnimation, setShowLogoutAnimation] = useState(false)
-  const [operationType, setOperationType] = useState<'RENDICION' | 'CAJA_CHICA' | 'PLANILLA_MOVILIDAD' | null>(null)
+  const [operationType, setOperationType] = useState<'RENDICION' | 'CAJA_CHICA' | 'PLANILLA_MOVILIDAD' | 'GASTO_REPARABLE' | null>(null)
   const [showMovilidadForm, setShowMovilidadForm] = useState(false)
   const [pendingPlanillasCount, setPendingPlanillasCount] = useState(0)
   const [userPlanillasCount, setUserPlanillasCount] = useState({ pendientes: 0, aprobadas: 0, rechazadas: 0 })
@@ -117,7 +132,11 @@ export default function HomePage() {
   const [assignDestinationType, setAssignDestinationType] = useState<'RENDICION' | 'CAJA_CHICA' | ''>('')
   const [assignRendicionNumber, setAssignRendicionNumber] = useState('')
   const [assignCajaChicaNumber, setAssignCajaChicaNumber] = useState('')
+  const [assignCodLocal, setAssignCodLocal] = useState('')
   const [assigningDestino, setAssigningDestino] = useState(false)
+  const [availableRendiciones, setAvailableRendiciones] = useState<Rendicion[]>([])
+  const [availableCajasChicas, setAvailableCajasChicas] = useState<Rendicion[]>([])
+  const [loadingAvailableList, setLoadingAvailableList] = useState(false)
 
   const [showAssignNumberModal, setShowAssignNumberModal] = useState(false)
   const [assigningNumber, setAssigningNumber] = useState(false)
@@ -125,18 +144,35 @@ export default function HomePage() {
   const [newNumber, setNewNumber] = useState('')
   const [isPageVisible, setIsPageVisible] = useState(true) // Page Visibility API
 
+  // Estados para edición de factura en modal
+  const [editingObservacion, setEditingObservacion] = useState('')
+  const [editingConcepto, setEditingConcepto] = useState('')
+  const [imageRotation, setImageRotation] = useState(0)
+  const [savingInvoice, setSavingInvoice] = useState(false)
+  const [showAssignToModal, setShowAssignToModal] = useState(false)
+  const [assignToType, setAssignToType] = useState<'RENDICION' | 'CAJA_CHICA' | ''>('')
+  const [assignToNumber, setAssignToNumber] = useState('')
+
   // Helper function para obtener el nombre del tipo de documento
   const getDocumentTypeName = (plural = false, capitalized = true) => {
     if (!operationType) return plural ? 'documentos' : 'documento'
 
     const names = {
-      RENDICION: { singular: 'rendición', plural: 'rendiciones' },
+      RENDICION: { singular: 'rendicion', plural: 'rendiciones' },
       CAJA_CHICA: { singular: 'caja chica', plural: 'cajas chicas' },
-      PLANILLA_MOVILIDAD: { singular: 'planilla', plural: 'planillas' }
+      PLANILLA_MOVILIDAD: { singular: 'planilla', plural: 'planillas' },
+      GASTO_REPARABLE: { singular: 'gasto reparable', plural: 'gastos reparables' }
     }
 
     const name = plural ? names[operationType].plural : names[operationType].singular
     return capitalized ? name.charAt(0).toUpperCase() + name.slice(1) : name
+  }
+
+  // Helper function para obtener el CodLocal de una caja chica seleccionada
+  const getCodLocalFromNroRendicion = (nroRend: string): string | undefined => {
+    if (!nroRend || operationType !== 'CAJA_CHICA') return undefined
+    const found = rendiciones.find(r => String(r.NroRend) === String(nroRend))
+    return found?.CodLocal
   }
 
   // 🆕 Función para cargar planillas de movilidad
@@ -209,6 +245,7 @@ export default function HomePage() {
         setAssignDestinationType('')
         setAssignRendicionNumber('')
         setAssignCajaChicaNumber('')
+        setAssignCodLocal('')
       } else {
         alert(data.error || 'Error al asignar planilla')
       }
@@ -217,6 +254,33 @@ export default function HomePage() {
       alert('Error al asignar planilla')
     } finally {
       setAssigningDestino(false)
+    }
+  }
+
+  // Función para eliminar planilla (solo SUPER_ADMIN y STAFF)
+  const handleEliminarPlanilla = async (planillaId: string, nroPlanilla?: string) => {
+    if (!confirm(`¿Estás seguro de eliminar la planilla ${nroPlanilla || planillaId}?\n\nEsta acción no se puede deshacer.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/planillas-movilidad/${planillaId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        alert(data.message)
+        setShowPlanillaDetailModal(false)
+        setSelectedPlanilla(null)
+        loadPlanillas()
+      } else {
+        alert(data.error || 'Error al eliminar planilla')
+      }
+    } catch (error) {
+      console.error('Error eliminando planilla:', error)
+      alert('Error al eliminar planilla')
     }
   }
 
@@ -231,27 +295,35 @@ export default function HomePage() {
         router.push('/select-operation')
         return
       }
-      // Establecer tipo de operación
-      setOperationType(savedType as 'RENDICION' | 'CAJA_CHICA' | 'PLANILLA_MOVILIDAD')
+      // Establecer tipo de operacion
+      setOperationType(savedType as 'RENDICION' | 'CAJA_CHICA' | 'PLANILLA_MOVILIDAD' | 'GASTO_REPARABLE')
       // ❌ NO llamar loadInvoices() aquí porque operationType todavía no se actualizó
       // ✅ El useEffect de la línea 115 se encargará de cargar cuando operationType cambie
-      loadUsers() // 🆕 Cargar lista de usuarios
+      // Solo cargar usuarios si tiene permisos de admin/staff
+      const canViewUsers = ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF', 'VERIFICADOR'].includes(session?.user?.role || '')
+      if (canViewUsers) {
+        loadUsers()
+      }
     }
   }, [status, router])
 
-  // 🆕 Recargar facturas y rendiciones/cajas chicas cuando cambie el filtro de usuario o tipo de operación
+  // 🆕 Recargar facturas y rendiciones/cajas chicas cuando cambie el filtro de usuario o tipo de operacion
   useEffect(() => {
     if (status === 'authenticated' && operationType) {
-      console.log('🔍 operationType cambió a:', operationType)
+      console.log('🔍 operationType cambio a:', operationType)
       if (operationType === 'PLANILLA_MOVILIDAD') {
         console.log('✅ Llamando a loadPlanillas...')
         loadPlanillas() // 🆕 Cargar planillas si estamos en modo planilla
+      } else if (operationType === 'GASTO_REPARABLE') {
+        console.log('✅ Modo Gasto Reparable...')
+        // TODO: Implementar loadGastosReparables() cuando exista la pagina
+        loadPlanillas() // Por ahora mostrar planillas hasta tener pagina dedicada
       } else {
         loadInvoices()
         loadRendiciones() // Recargar rendiciones/cajas chicas al cambiar tipo
       }
     }
-  }, [status, userFilter, operationType, loadPlanillas])
+  }, [status, userFilter, operationType, estadoCierre, loadPlanillas])
 
   // Auto-refresh SUPER AGRESIVO: actualización cada 1 segundo
   useEffect(() => {
@@ -419,6 +491,15 @@ export default function HomePage() {
     }
   }, [status, session?.user?.role, isPageVisible, loadUserPlanillas])
 
+  // Inicializar campos de edición cuando se selecciona una factura
+  useEffect(() => {
+    if (selectedInvoice) {
+      setEditingObservacion(selectedInvoice.observacion || '')
+      setEditingConcepto(selectedInvoice.conceptoGasto || selectedInvoice.resumenItems || '')
+      setImageRotation(0) // Siempre empezar sin rotación
+    }
+  }, [selectedInvoice])
+
   // Solicitar permiso de notificaciones para todos los usuarios
   useEffect(() => {
     if (status === 'authenticated' && notificationsSupported) {
@@ -479,6 +560,12 @@ export default function HomePage() {
   const loadUsers = async () => {
     try {
       const response = await fetch('/api/users')
+      if (!response.ok) {
+        // Si no tiene permisos, simplemente no cargar usuarios
+        if (response.status === 401 || response.status === 403) {
+          return
+        }
+      }
       const data = await response.json()
       if (data.users) {
         setUsers(data.users)
@@ -501,26 +588,96 @@ export default function HomePage() {
 
       // Consultar el endpoint correcto según el tipo de operación
       const endpoint = operationType === 'CAJA_CHICA' ? '/api/cajas-chicas' : '/api/rendiciones'
-      const response = await fetch(endpoint)
+
+      // Construir query params según estadoCierre
+      const params = new URLSearchParams()
+      if (estadoCierre === 'abiertas') {
+        params.append('soloAbiertas', 'true')
+      } else if (estadoCierre === 'cerradas') {
+        params.append('soloAbiertas', 'false')
+      } else if (estadoCierre === 'todas') {
+        params.append('soloAbiertas', 'null')
+      }
+
+      const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
+      const response = await fetch(url)
       const data = await response.json()
 
       if (operationType === 'CAJA_CHICA') {
         // Para cajas chicas, usar directamente (ya tienen NroRend)
         if (data.success && data.cajasChicas) {
           setRendiciones(data.cajasChicas)
-          console.log(`💰 ${data.cajasChicas.length} cajas chicas pendientes cargadas`)
+          console.log(`💰 ${data.cajasChicas.length} cajas chicas ${estadoCierre} cargadas`)
         }
       } else {
         // Para rendiciones, usar directamente
         if (data.success && data.rendiciones) {
           setRendiciones(data.rendiciones)
-          console.log(`📋 ${data.rendiciones.length} rendiciones pendientes cargadas`)
+          console.log(`📋 ${data.rendiciones.length} rendiciones ${estadoCierre} cargadas`)
         }
       }
     } catch (error) {
       console.error('Error loading rendiciones/cajas chicas:', error)
     } finally {
       setLoadingRendiciones(false)
+    }
+  }
+
+  // Cargar rendiciones disponibles para asignación de planillas
+  const loadAvailableRendiciones = async () => {
+    try {
+      setLoadingAvailableList(true)
+
+      // Construir query params según estadoCierre
+      const params = new URLSearchParams()
+      if (estadoCierre === 'abiertas') {
+        params.append('soloAbiertas', 'true')
+      } else if (estadoCierre === 'cerradas') {
+        params.append('soloAbiertas', 'false')
+      } else if (estadoCierre === 'todas') {
+        params.append('soloAbiertas', 'null')
+      }
+
+      const url = params.toString() ? `/api/rendiciones?${params.toString()}` : '/api/rendiciones'
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data.success && data.rendiciones) {
+        setAvailableRendiciones(data.rendiciones)
+        console.log(`📋 ${data.rendiciones.length} rendiciones ${estadoCierre} disponibles para asignar`)
+      }
+    } catch (error) {
+      console.error('Error loading available rendiciones:', error)
+    } finally {
+      setLoadingAvailableList(false)
+    }
+  }
+
+  // Cargar cajas chicas disponibles para asignación de planillas
+  const loadAvailableCajasChicas = async () => {
+    try {
+      setLoadingAvailableList(true)
+
+      // Construir query params según estadoCierre
+      const params = new URLSearchParams()
+      if (estadoCierre === 'abiertas') {
+        params.append('soloAbiertas', 'true')
+      } else if (estadoCierre === 'cerradas') {
+        params.append('soloAbiertas', 'false')
+      } else if (estadoCierre === 'todas') {
+        params.append('soloAbiertas', 'null')
+      }
+
+      const url = params.toString() ? `/api/cajas-chicas?${params.toString()}` : '/api/cajas-chicas'
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data.success && data.cajasChicas) {
+        setAvailableCajasChicas(data.cajasChicas)
+        console.log(`💰 ${data.cajasChicas.length} cajas chicas ${estadoCierre} disponibles para asignar`)
+      }
+    } catch (error) {
+      console.error('Error loading available cajas chicas:', error)
+    } finally {
+      setLoadingAvailableList(false)
     }
   }
 
@@ -538,6 +695,11 @@ export default function HomePage() {
       formData.append('file', file)
       if (nroRendicionValue) {
         formData.append('nroRendicion', nroRendicionValue)
+        // Enviar codLocal para cajas chicas
+        const codLocal = getCodLocalFromNroRendicion(nroRendicionValue)
+        if (codLocal) {
+          formData.append('codLocal', codLocal)
+        }
       }
       if (operationType) {
         formData.append('tipoOperacion', operationType)
@@ -622,6 +784,11 @@ export default function HomePage() {
         formData.append('file', file)
         if (nroRendicion.trim()) {
           formData.append('nroRendicion', nroRendicion.trim())
+          // Enviar codLocal para cajas chicas
+          const codLocal = getCodLocalFromNroRendicion(nroRendicion.trim())
+          if (codLocal) {
+            formData.append('codLocal', codLocal)
+          }
         }
         if (operationType) {
           formData.append('tipoOperacion', operationType)
@@ -747,6 +914,11 @@ export default function HomePage() {
         formData.append('file', file)
         if (nroRendicion.trim()) {
           formData.append('nroRendicion', nroRendicion.trim())
+          // Enviar codLocal para cajas chicas
+          const codLocal = getCodLocalFromNroRendicion(nroRendicion.trim())
+          if (codLocal) {
+            formData.append('codLocal', codLocal)
+          }
         }
         if (operationType) {
           formData.append('tipoOperacion', operationType)
@@ -788,6 +960,79 @@ export default function HomePage() {
 
     // Reset input para permitir subir el mismo archivo nuevamente
     event.target.value = ''
+  }
+
+  // Función para guardar cambios en la factura (observación, concepto, rotación)
+  const handleSaveInvoice = async () => {
+    if (!selectedInvoice) return
+
+    setSavingInvoice(true)
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          observacion: editingObservacion,
+          conceptoGasto: editingConcepto,
+          imageRotation,
+        }),
+      })
+
+      if (response.ok) {
+        alert('✅ Cambios guardados correctamente')
+        await loadInvoices()
+      } else {
+        const error = await response.json()
+        alert(`❌ Error: ${error.error || 'No se pudo guardar'}`)
+      }
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`)
+    } finally {
+      setSavingInvoice(false)
+    }
+  }
+
+  // Función para asignar factura a rendición o caja chica
+  const handleAssignInvoiceTo = async () => {
+    if (!selectedInvoice || !assignToType || !assignToNumber) {
+      alert('Por favor complete todos los campos')
+      return
+    }
+
+    setSavingInvoice(true)
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipoOperacion: assignToType,
+          nroRendicion: assignToNumber,
+        }),
+      })
+
+      if (response.ok) {
+        alert(`✅ Factura asignada a ${assignToType === 'RENDICION' ? 'Rendición' : 'Caja Chica'} ${assignToNumber}`)
+        setShowAssignToModal(false)
+        setAssignToType('')
+        setAssignToNumber('')
+        await loadInvoices()
+      } else {
+        const error = await response.json()
+        alert(`❌ Error: ${error.error || 'No se pudo asignar'}`)
+      }
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`)
+    } finally {
+      setSavingInvoice(false)
+    }
+  }
+
+  // Función para rotar imagen
+  const handleRotateImage = (direction: 'left' | 'right') => {
+    setImageRotation(prev => {
+      const newRotation = direction === 'right' ? (prev + 90) % 360 : (prev - 90 + 360) % 360
+      return newRotation
+    })
   }
 
   const handleDelete = async (id: string) => {
@@ -992,11 +1237,43 @@ export default function HomePage() {
     return null
   }
 
+  // Función para determinar si una rendición/caja está cerrada
+  // TODO: El criterio exacto se definirá después (puede ser por campo 'cerrada', fecha, estado, etc.)
+  const isRendicionCerrada = (inv: Invoice): boolean => {
+    // Por ahora retorna false (todas abiertas) hasta que se defina el criterio
+    // Posibles criterios futuros:
+    // - inv.cerrada === true
+    // - inv.estadoCierre === 'CERRADA'
+    // - Fecha de cierre pasada
+    // - Estado específico del SQL Server
+    return false
+  }
+
   const filteredInvoices = invoices
     .filter(inv => {
       if (filter === 'completed') return inv.status === 'COMPLETED'
       if (filter === 'processing') return inv.status === 'PROCESSING' || inv.status === 'PENDING'
       if (filter === 'failed') return inv.status === 'FAILED'
+      return true
+    })
+    .filter(inv => {
+      // Filtrar por estado de cierre (abiertas/cerradas)
+      if (estadoCierre === 'todas') return true
+      if (estadoCierre === 'cerradas') return isRendicionCerrada(inv)
+      if (estadoCierre === 'abiertas') return !isRendicionCerrada(inv)
+      return true
+    })
+    // NOTA: Ya no filtramos por tipoOperacion aquí porque la API ya lo hace
+    .filter(inv => {
+      // Filtrar por caja chica/rendición seleccionada
+      if (nroRendicion) {
+        // Si hay una caja/rendición seleccionada, solo mostrar documentos vinculados
+        // Comparar como strings para evitar problemas de tipo (number vs string)
+        // Si la factura no tiene nroRendicion asignado, no la mostramos cuando hay filtro
+        if (!inv.nroRendicion) return false
+        return String(inv.nroRendicion) === String(nroRendicion)
+      }
+      // Si no hay selección, mostrar todos
       return true
     })
     .filter(inv => {
@@ -1020,8 +1297,44 @@ export default function HomePage() {
       )
     })
 
+  // La API ya filtra por tipoOperacion
   const completedCount = invoices.filter(i => i.status === 'COMPLETED').length
   const processingCount = invoices.filter(i => i.status === 'PROCESSING' || i.status === 'PENDING').length
+
+  // Contador de documentos por usuario (por ID para el dropdown)
+  // La API ya filtra por tipoOperacion, así que contamos todos los invoices retornados
+  const userDocumentCountsById = invoices.reduce((acc, invoice) => {
+    const inv = invoice as any
+    const odometer = inv.userId || 'unknown'
+    acc[odometer] = (acc[odometer] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  // Contador de documentos por rendición/caja chica
+  // La API ya filtra por tipoOperacion, así que solo contamos por nroRendicion
+  const rendicionDocumentCounts = invoices.reduce((acc, invoice) => {
+    if (invoice.nroRendicion) {
+      const key = String(invoice.nroRendicion)
+      acc[key] = (acc[key] || 0) + 1
+    }
+    return acc
+  }, {} as Record<string, number>)
+
+  // Mapa para verificar si una caja/rendición está abierta o cerrada
+  const rendicionStatusMap = rendiciones.reduce((acc, rend) => {
+    acc[String(rend.NroRend)] = rend.CodEstado
+    return acc
+  }, {} as Record<string, string>)
+
+  // Helper para obtener el estado de una caja/rendición
+  const getRendicionStatus = (nroRendicion: string | undefined | null): { isOpen: boolean; label: string; color: string } => {
+    if (!nroRendicion) return { isOpen: true, label: '', color: '' }
+    const codEstado = rendicionStatusMap[String(nroRendicion)]
+    if (codEstado === '00') return { isOpen: true, label: '🟢', color: 'bg-green-100 text-green-800 border-green-300' }
+    if (codEstado === '01') return { isOpen: false, label: '🔴', color: 'bg-red-100 text-red-800 border-red-300' }
+    // Si no está en el mapa, asumimos que está cerrada o no disponible
+    return { isOpen: false, label: '⚪', color: 'bg-gray-100 text-gray-600 border-gray-300' }
+  }
 
   // Diseño limpio y profesional - sin animaciones infantiles
   const getThemeColors = () => {
@@ -1048,7 +1361,7 @@ export default function HomePage() {
       {/* Header - Responsive con menú hamburguesa en móvil */}
       <FadeIn duration={1} delay={0}>
       <header className={`${theme.header} backdrop-blur-lg border-b ${theme.headerBorder} sticky top-0 z-40 shadow-sm relative`}>
-        <div className="max-w-7xl mx-auto px-3 md:px-4 py-2 md:py-4">
+        <div className="max-w-[1920px] mx-auto px-3 md:px-4 lg:px-6 py-2 md:py-4">
           <div className="flex items-center justify-between">
             {/* Logo y Hamburguesa (Móvil) / Logo normal (Desktop) */}
             <div className="flex items-center gap-2 md:gap-3">
@@ -1103,10 +1416,12 @@ export default function HomePage() {
                       ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
                       : operationType === 'CAJA_CHICA'
                       ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                      : operationType === 'GASTO_REPARABLE'
+                      ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
                       : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                   }`}
                 >
-                  {operationType === 'RENDICION' ? '📋 Rendición' : operationType === 'CAJA_CHICA' ? '💰 Caja Chica' : '🚗 Planilla'}
+                  {operationType === 'RENDICION' ? '📋 Rendicion' : operationType === 'CAJA_CHICA' ? '💰 Caja Chica' : operationType === 'GASTO_REPARABLE' ? '📝 Gasto Rep.' : '🚗 Planilla'}
                 </button>
               )}
               {session.user.role === 'APROBADOR' && (
@@ -1228,7 +1543,7 @@ export default function HomePage() {
 
               {/* Opciones del menú */}
               <div className="space-y-2">
-                {/* Cambiar operación */}
+                {/* Cambiar operacion */}
                 {operationType && (
                   <button
                     onClick={() => {
@@ -1239,16 +1554,17 @@ export default function HomePage() {
                   >
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       operationType === 'RENDICION' ? 'bg-indigo-100' :
-                      operationType === 'CAJA_CHICA' ? 'bg-emerald-100' : 'bg-amber-100'
+                      operationType === 'CAJA_CHICA' ? 'bg-emerald-100' :
+                      operationType === 'GASTO_REPARABLE' ? 'bg-rose-100' : 'bg-amber-100'
                     }`}>
                       <span className="text-xl">
-                        {operationType === 'RENDICION' ? '📋' : operationType === 'CAJA_CHICA' ? '💰' : '🚗'}
+                        {operationType === 'RENDICION' ? '📋' : operationType === 'CAJA_CHICA' ? '💰' : operationType === 'GASTO_REPARABLE' ? '📝' : '🚗'}
                       </span>
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">Cambiar Operación</p>
+                      <p className="font-semibold text-gray-900">Cambiar Operacion</p>
                       <p className="text-xs text-gray-500">
-                        {operationType === 'RENDICION' ? 'Rendición' : operationType === 'CAJA_CHICA' ? 'Caja Chica' : 'Planilla Movilidad'}
+                        {operationType === 'RENDICION' ? 'Rendicion' : operationType === 'CAJA_CHICA' ? 'Caja Chica' : operationType === 'GASTO_REPARABLE' ? 'Gasto Reparable' : 'Planilla Movilidad'}
                       </p>
                     </div>
                   </button>
@@ -1368,9 +1684,9 @@ export default function HomePage() {
       </FadeIn>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-3 md:px-4 py-3 md:py-6 pb-24 md:pb-6">
+      <main className="max-w-[1920px] mx-auto px-3 md:px-4 lg:px-6 py-3 md:py-6 pb-24 md:pb-6">
         {/* N° Rendición - Compacto para móviles - Ocultar para PLANILLA_MOVILIDAD */}
-        {operationType !== 'PLANILLA_MOVILIDAD' && (
+        {operationType !== 'PLANILLA_MOVILIDAD' && operationType !== 'GASTO_REPARABLE' && (
         <SlideUp delay={0.3}>
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl md:rounded-2xl p-3 md:p-4 mb-4 md:mb-6 shadow-lg">
           <div className="flex items-center gap-2 md:gap-4">
@@ -1390,21 +1706,27 @@ export default function HomePage() {
                 className="w-full px-3 py-2 md:px-4 md:py-3 border-2 border-yellow-400 rounded-lg md:rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-sm md:text-base text-gray-900 font-semibold bg-white"
                 disabled={loadingRendiciones}
               >
-                <option value="">{operationType === 'RENDICION' ? 'Selecciona rendición' : 'Selecciona caja chica'}</option>
-                {rendiciones.map((rend) => (
-                  <option key={rend.NroRend} value={rend.NroRend}>
-                    {operationType === 'RENDICION'
-                      ? `Rendición N° ${rend.NroRend}`
-                      : `Caja Chica N° ${rend.NroRend}${rend.CodLocal ? ` - Local: ${rend.CodLocal}` : ''}`
-                    }
-                  </option>
-                ))}
+                <option value="">📋 Ver todos los documentos ({invoices.length})</option>
+                {rendiciones.map((rend) => {
+                  const docCount = rendicionDocumentCounts[String(rend.NroRend)] || 0
+                  const estadoLabel = rend.CodEstado === '00' ? '🟢 Abierta' : '🔴 Cerrada'
+                  return (
+                    <option key={rend.NroRend} value={rend.NroRend}>
+                      {operationType === 'RENDICION'
+                        ? `${estadoLabel} - Rendición N° ${rend.NroRend}${rend.CodUserAsg ? ` (${rend.CodUserAsg})` : ''} - ${docCount} docs`
+                        : `${estadoLabel} - ${rend.CodLocal || '-'} - ${rend.NroRend} - ${rend.DesEmpresa || 'Sin empresa'} (${docCount} docs)`
+                      }
+                    </option>
+                  )
+                })}
               </select>
               <p className="text-xs text-gray-600 mt-1 hidden md:block">
                 {rendiciones.length === 0 && !loadingRendiciones ? (
                   <span className="text-orange-600">⚠️ No tienes {operationType === 'RENDICION' ? 'rendiciones' : 'cajas chicas'} pendientes (Estado 00) en SQL Server</span>
+                ) : nroRendicion ? (
+                  <span>🔍 Mostrando solo documentos de {operationType === 'RENDICION' ? 'Rendición' : 'Caja Chica'} N° {nroRendicion}</span>
                 ) : (
-                  <span>✅ Selecciona {operationType === 'RENDICION' ? 'la rendición' : 'la caja chica'} a la que pertenece esta factura</span>
+                  <span>✅ Selecciona una {operationType === 'RENDICION' ? 'rendición' : 'caja chica'} para filtrar documentos</span>
                 )}
               </p>
             </div>
@@ -1450,17 +1772,17 @@ export default function HomePage() {
               />
             </div>
 
-            {/* User Filter - Solo para admins */}
-            {session?.user?.role !== 'USER' && users.length > 0 && (
+            {/* User Filter - Solo para admins - CON CONTADOR DE DOCS */}
+            {!['USER_L1', 'USER_L2'].includes(session?.user?.role || '') && users.length > 0 && (
               <select
                 value={userFilter}
                 onChange={(e) => setUserFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-900 bg-white font-semibold"
               >
-                <option value="all">👤 Todos</option>
+                <option value="all">👤 Todos ({invoices.length} docs)</option>
                 {users.map(user => (
                   <option key={user.id} value={user.id}>
-                    👤 {user.name?.split(' ')[0] || user.email.split('@')[0]}
+                    👤 {user.name?.split(' ')[0] || user.email.split('@')[0]} ({userDocumentCountsById[user.id] || 0} docs)
                   </option>
                 ))}
               </select>
@@ -1501,6 +1823,29 @@ export default function HomePage() {
               {selectionMode ? '❌' : '📌'}
             </button>
           </div>
+
+          {/* Fila 3: Filtro Abiertas/Cerradas - Solo para Rendiciones y Cajas Chicas */}
+          {(operationType === 'RENDICION' || operationType === 'CAJA_CHICA') && (
+            <div className="flex gap-1.5 pt-1">
+              {[
+                { id: 'abiertas', label: 'Abiertas', icon: '🔓', color: 'from-green-600 to-emerald-600' },
+                { id: 'cerradas', label: 'Cerradas', icon: '🔒', color: 'from-gray-600 to-slate-600' },
+                { id: 'todas', label: 'Todas', icon: '📂', color: 'from-indigo-600 to-purple-600' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setEstadoCierre(f.id as 'todas' | 'abiertas' | 'cerradas')}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                    estadoCierre === f.id
+                      ? `bg-gradient-to-r ${f.color} text-white shadow-lg`
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {f.icon} {f.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         </SlideUp>
 
@@ -1579,6 +1924,26 @@ export default function HomePage() {
                   <span className="hidden sm:inline">Tabla</span>
                 </button>
               </div>
+
+              {/* Column Selector - Solo visible en vista de tarjetas y en pantallas grandes */}
+              {viewMode === 'cards' && (
+                <div className="hidden lg:flex gap-1 bg-white rounded-xl border-2 border-gray-200 p-1">
+                  {[4, 5, 6].map((cols) => (
+                    <button
+                      key={cols}
+                      onClick={() => setColumnCount(cols as 4 | 5 | 6)}
+                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        columnCount === cols
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                      title={`${cols} columnas`}
+                    >
+                      {cols}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1589,48 +1954,261 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <p className={`${theme.textSecondary} font-semibold mb-2`}>No hay {getDocumentTypeName(true, false)} que mostrar</p>
+              <p className={`${theme.textSecondary} font-semibold mb-2`}>
+                {nroRendicion
+                  ? `No hay documentos en ${operationType === 'RENDICION' ? 'Rendición' : 'Caja Chica'} N° ${nroRendicion}`
+                  : `No hay ${getDocumentTypeName(true, false)} que mostrar`
+                }
+              </p>
               <p className={`text-sm ${theme.textMuted}`}>
-                {searchQuery ? 'Intenta con otra búsqueda' : `Crea tu primera ${getDocumentTypeName(false, false)} para empezar`}
+                {nroRendicion
+                  ? 'Esta caja/rendición no tiene documentos asignados aún'
+                  : searchQuery
+                    ? 'Intenta con otra búsqueda'
+                    : `Crea tu primera ${getDocumentTypeName(false, false)} para empezar`
+                }
               </p>
             </div>
           ) : viewMode === 'table' ? (
-            /* TABLE VIEW */
-            <div className={`${theme.card} backdrop-blur-sm rounded-2xl overflow-hidden border ${theme.cardBorder} shadow-sm`}>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                    <tr>
-                      {selectionMode && (
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.length === filteredInvoices.length && filteredInvoices.length > 0}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedIds(filteredInvoices.map(inv => inv.id))
-                              } else {
-                                setSelectedIds([])
-                              }
-                            }}
-                            className="w-4 h-4 text-indigo-600 border-white rounded focus:ring-white"
-                          />
-                        </th>
-                      )}
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Estado</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Fecha</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Emisor</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">RUC Emisor</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Serie-Número</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Tipo Doc</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Descripción / Ítems</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Subtotal</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">IGV</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Total</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">SUNAT</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Acciones</th>
-                    </tr>
-                  </thead>
+            operationType === 'PLANILLA_MOVILIDAD' ? (
+              /* TABLE VIEW - PLANILLAS DE MOVILIDAD */
+              <div className={`${theme.card} backdrop-blur-sm rounded-2xl overflow-hidden border ${theme.cardBorder} shadow-sm`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      <tr>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Estado</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">N° Planilla</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Razón Social</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">RUC</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Periodo</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Fecha Emisión</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Nombres y Apellidos</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Cargo</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">DNI</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Centro Costo</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Tipo Operación</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">N° Destino</th>
+                        <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider">Total Viaje</th>
+                        <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider">Total Día</th>
+                        <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider">Total General</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Creado por</th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">Fecha Creación</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {planillas.map((planilla, idx) => (
+                        <tr
+                          key={planilla.id}
+                          className="hover:bg-blue-50 transition-colors"
+                          style={{ animationDelay: `${idx * 0.02}s` }}
+                        >
+                          <td className="px-3 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                              planilla.estadoAprobacion === 'PENDIENTE_APROBACION'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : planilla.estadoAprobacion === 'APROBADA'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {planilla.estadoAprobacion === 'PENDIENTE_APROBACION' ? 'PENDIENTE' : planilla.estadoAprobacion}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">{planilla.nroPlanilla || '-'}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">{planilla.razonSocial || '-'}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap font-mono">{planilla.ruc || '-'}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">{planilla.periodo || '-'}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">
+                            {planilla.fechaEmision ? new Date(planilla.fechaEmision).toLocaleDateString('es-PE') : 'N/A'}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-900 font-medium whitespace-nowrap">{planilla.nombresApellidos}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">{planilla.cargo}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap font-mono">{planilla.dni}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">{planilla.centroCosto || '-'}</td>
+                          <td className="px-3 py-3 text-xs whitespace-nowrap">
+                            {planilla.tipoOperacion ? (
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                planilla.tipoOperacion === 'RENDICION'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : planilla.tipoOperacion === 'CAJA_CHICA'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {planilla.tipoOperacion === 'RENDICION' ? '📋 Rendición' : planilla.tipoOperacion === 'CAJA_CHICA' ? '💰 Caja Chica' : planilla.tipoOperacion}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-xs whitespace-nowrap">
+                            {(planilla.tipoOperacion === 'RENDICION' && planilla.nroRendicion) || (planilla.tipoOperacion === 'CAJA_CHICA' && planilla.nroCajaChica) ? (
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                planilla.tipoOperacion === 'CAJA_CHICA'
+                                  ? 'bg-amber-600 text-white'
+                                  : 'bg-blue-600 text-white'
+                              }`}>
+                                {planilla.tipoOperacion === 'CAJA_CHICA' ? '💰' : '📋'} {planilla.tipoOperacion === 'RENDICION' ? planilla.nroRendicion : planilla.nroCajaChica}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                                ⚠️ Sin asignar
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-right text-xs text-gray-900 font-medium whitespace-nowrap">
+                            S/ {planilla.totalViaje?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="px-3 py-3 text-right text-xs text-gray-900 font-medium whitespace-nowrap">
+                            S/ {planilla.totalDia?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="px-3 py-3 text-right text-xs text-gray-900 font-bold text-blue-600 whitespace-nowrap">
+                            S/ {planilla.totalGeneral?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">{planilla.user?.name || planilla.user?.email || '-'}</td>
+                          <td className="px-3 py-3 text-xs text-gray-900 whitespace-nowrap">
+                            {new Date(planilla.createdAt).toLocaleDateString('es-PE')}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex gap-1 justify-center">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(`/api/planillas-movilidad/${planilla.id}`)
+                                    const data = await response.json()
+                                    if (data.success) {
+                                      setSelectedPlanilla(data.planilla)
+                                      setShowPlanillaDetailModal(true)
+                                    }
+                                  } catch (error) {
+                                    console.error('Error cargando planilla:', error)
+                                  }
+                                }}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                                title="Ver detalle"
+                              >
+                                👁️
+                              </button>
+                              {planilla.estadoAprobacion === 'PENDIENTE_APROBACION' && (session?.user?.role === 'APROBADOR' || session?.user?.role === 'SUPER_ADMIN') && (
+                                <>
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm('¿Está seguro de aprobar esta planilla?')) {
+                                        try {
+                                          const response = await fetch(`/api/planillas-movilidad/${planilla.id}/aprobar`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ accion: 'APROBAR', comentarios: null })
+                                          })
+                                          const data = await response.json()
+                                          if (data.success) {
+                                            alert('Planilla aprobada correctamente')
+                                            loadPlanillas()
+                                          } else {
+                                            alert('Error: ' + data.error)
+                                          }
+                                        } catch (error) {
+                                          console.error('Error aprobando planilla:', error)
+                                          alert('Error al aprobar planilla')
+                                        }
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
+                                    title="Aprobar"
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      const comentario = prompt('Ingrese comentarios (requerido para rechazar):')
+                                      if (comentario && comentario.trim()) {
+                                        if (confirm('¿Está seguro de rechazar esta planilla?')) {
+                                          try {
+                                            const response = await fetch(`/api/planillas-movilidad/${planilla.id}/aprobar`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ accion: 'RECHAZAR', comentarios: comentario })
+                                            })
+                                            const data = await response.json()
+                                            if (data.success) {
+                                              alert('Planilla rechazada correctamente')
+                                              loadPlanillas()
+                                            } else {
+                                              alert('Error: ' + data.error)
+                                            }
+                                          } catch (error) {
+                                            console.error('Error rechazando planilla:', error)
+                                            alert('Error al rechazar planilla')
+                                          }
+                                        }
+                                      } else if (comentario !== null) {
+                                        alert('Debe ingresar comentarios para rechazar')
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                                    title="Rechazar"
+                                  >
+                                    ✗
+                                  </button>
+                                </>
+                              )}
+                              {planilla.estadoAprobacion === 'APROBADA' && (
+                                <button
+                                  onClick={() => window.open(`/planillas-movilidad/${planilla.id}/print`, '_blank')}
+                                  className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors"
+                                  title="Imprimir"
+                                >
+                                  🖨️
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              /* TABLE VIEW - FACTURAS/RENDICIONES/CAJAS CHICAS */
+              <div className={`${theme.card} backdrop-blur-sm rounded-2xl overflow-hidden border ${theme.cardBorder} shadow-sm`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                      <tr>
+                        {selectionMode && (
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.length === filteredInvoices.length && filteredInvoices.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedIds(filteredInvoices.map(inv => inv.id))
+                                } else {
+                                  setSelectedIds([])
+                                }
+                              }}
+                              className="w-4 h-4 text-indigo-600 border-white rounded focus:ring-white"
+                            />
+                          </th>
+                        )}
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Estado</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Fecha</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Emisor</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">RUC Emisor</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Serie-Número</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Tipo Doc</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">N° Caja/Rend</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Descripción / Ítems</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Subtotal</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">IGV</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Total</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">SUNAT</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Creado por</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Comentarios</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Acciones</th>
+                      </tr>
+                    </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filteredInvoices.map((invoice, idx) => (
                       <tr
@@ -1705,6 +2283,16 @@ export default function HomePage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-600">
                           {invoice.documentType || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold">
+                          {invoice.nroRendicion ? (
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs border ${getRendicionStatus(invoice.nroRendicion).color || 'bg-blue-100 text-blue-800'}`}>
+                              {getRendicionStatus(invoice.nroRendicion).label} {invoice.tipoOperacion === 'CAJA_CHICA' ? '💰' : '📋'} {invoice.nroRendicion}
+                              {!getRendicionStatus(invoice.nroRendicion).isOpen && <span className="ml-1 text-[10px]">(Cerrada)</span>}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700 max-w-xs">
                           {(() => {
@@ -1854,6 +2442,25 @@ export default function HomePage() {
                             </span>
                           )}
                         </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                          {invoice.user?.name || invoice.user?.email || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 max-w-xs">
+                          {invoice.observacion || invoice.glosaEditada ? (
+                            <div className="group relative">
+                              <span className="truncate block max-w-[150px]" title={invoice.observacion || invoice.glosaEditada || ''}>
+                                {invoice.observacion || invoice.glosaEditada}
+                              </span>
+                              {/* Tooltip con comentario completo al hacer hover */}
+                              <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 bg-gray-900 text-white p-3 rounded-lg shadow-2xl min-w-[200px] max-w-[350px]">
+                                <div className="font-bold text-xs mb-2 text-indigo-300 uppercase">Comentarios</div>
+                                <p className="text-sm whitespace-pre-wrap">{invoice.observacion || invoice.glosaEditada}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">Sin comentarios</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -1864,6 +2471,15 @@ export default function HomePage() {
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setSelectedInvoice(invoice)}
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
                             <button
@@ -1883,9 +2499,14 @@ export default function HomePage() {
                 </table>
               </div>
             </div>
+            )
           ) : operationType === 'PLANILLA_MOVILIDAD' ? (
             /* CARDS VIEW - PLANILLAS DE MOVILIDAD */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 ${
+              columnCount === 4 ? 'lg:grid-cols-4' :
+              columnCount === 5 ? 'lg:grid-cols-4 xl:grid-cols-5' :
+              'lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
+            }`}>
               {planillas.map((planilla, idx) => (
                 <SlideUp key={planilla.id} delay={0.9 + idx * 0.08}>
                 <AnimatedCard
@@ -1958,16 +2579,18 @@ export default function HomePage() {
                           )}
                         </span>
 
-                        {/* 🆕 Badge de estado de asignación */}
+                        {/* 🆕 Badge de tipo de operación */}
                         {planilla.estadoAprobacion === 'APROBADA' && (
                           <span
                             className={`text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow-lg flex items-center gap-1.5 ${
-                              planilla.aplicadaEn
-                                ? 'bg-blue-500/90 text-white'
+                              planilla.tipoOperacion
+                                ? planilla.tipoOperacion === 'RENDICION'
+                                  ? 'bg-indigo-500/90 text-white'
+                                  : 'bg-emerald-500/90 text-white'
                                 : 'bg-orange-500/90 text-white'
                             }`}
                           >
-                            {planilla.aplicadaEn ? (
+                            {planilla.tipoOperacion ? (
                               <>
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                   <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
@@ -2026,7 +2649,11 @@ export default function HomePage() {
             </div>
           ) : (
             /* CARDS VIEW - FACTURAS/RENDICIONES/CAJAS CHICAS */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 ${
+              columnCount === 4 ? 'lg:grid-cols-4' :
+              columnCount === 5 ? 'lg:grid-cols-4 xl:grid-cols-5' :
+              'lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
+            }`}>
               {filteredInvoices.map((invoice, idx) => (
                 <SlideUp key={invoice.id} delay={0.9 + idx * 0.08}>
                 <AnimatedCard
@@ -2132,6 +2759,17 @@ export default function HomePage() {
                             DUPLICADO
                           </span>
                         )}
+                        {/* Badge de Rendición/Caja Chica asignada con estado */}
+                        {invoice.nroRendicion && (
+                          <span className={`text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-1 shadow-lg ${
+                            getRendicionStatus(invoice.nroRendicion).isOpen
+                              ? 'bg-green-600/90 text-white'
+                              : 'bg-red-600/90 text-white'
+                          }`}>
+                            {getRendicionStatus(invoice.nroRendicion).label} {invoice.tipoOperacion === 'CAJA_CHICA' ? '💰' : '📋'} {invoice.nroRendicion}
+                            {!getRendicionStatus(invoice.nroRendicion).isOpen && <span className="text-[10px] opacity-80">(Cerrada)</span>}
+                          </span>
+                        )}
                         {/* Badge de Sin Número (alerta naranja) */}
                         {(invoice.tipoOperacion === 'RENDICION' || invoice.tipoOperacion === 'CAJA_CHICA') && !invoice.nroRendicion && (
                           <button
@@ -2159,8 +2797,16 @@ export default function HomePage() {
                         {invoice.invoiceNumber || invoice.serieNumero || 'N/A'}
                       </p>
                       {invoice.rucEmisor && (
-                        <p className={`text-xs ${theme.textMuted} mb-3 truncate`}>
+                        <p className={`text-xs ${theme.textMuted} mb-1 truncate`}>
                           RUC: {invoice.rucEmisor}
+                        </p>
+                      )}
+                      {invoice.user?.name && (
+                        <p className={`text-xs ${theme.textMuted} mb-3 truncate flex items-center gap-1`}>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          Subido por: {invoice.user.name}
                         </p>
                       )}
                       <div className="flex items-center justify-between">
@@ -2188,7 +2834,7 @@ export default function HomePage() {
       {/* Floating Action Buttons - Solo en vista de tarjetas */}
       {viewMode === 'cards' && (
         <div className="fixed bottom-6 left-0 right-0 px-4 z-30 md:bottom-8">
-          <div className="max-w-7xl mx-auto flex gap-2 md:gap-3">
+          <div className="max-w-[1920px] mx-auto flex gap-2 md:gap-3">
             <button
               onClick={() => operationType === 'PLANILLA_MOVILIDAD' ? setShowMovilidadForm(true) : setShowCamera(true)}
               disabled={uploading}
@@ -2276,14 +2922,12 @@ export default function HomePage() {
       )}
 
       {/* Movilidad Form */}
-      {showMovilidadForm && operationType && operationType !== 'RENDICION' && operationType !== 'CAJA_CHICA' && (
+      {showMovilidadForm && operationType === 'PLANILLA_MOVILIDAD' && (
         <MovilidadForm
-          operationType={operationType === 'PLANILLA_MOVILIDAD' ? 'RENDICION' : operationType}
-          nroAsignado={nroRendicion}
           onCancel={() => setShowMovilidadForm(false)}
           onSuccess={() => {
             setShowMovilidadForm(false)
-            loadInvoices()
+            loadPlanillas() // Actualizar lista de planillas inmediatamente
           }}
         />
       )}
@@ -2466,12 +3110,12 @@ export default function HomePage() {
                   {invoiceToAssign.tipoOperacion === 'RENDICION'
                     ? rendiciones.map((rend) => (
                         <option key={rend.NroRend} value={rend.NroRend}>
-                          Rendición #{rend.NroRend}
+                          {rend.CodEstado === '00' ? '🟢 Abierta' : '🔴 Cerrada'} - Rendición #{rend.NroRend}{rend.CodUserAsg ? ` (${rend.CodUserAsg})` : ''}
                         </option>
                       ))
                     : rendiciones.map((caja) => (
                         <option key={caja.NroRend} value={caja.NroRend}>
-                          Caja Chica #{caja.NroRend}
+                          {caja.CodEstado === '00' ? '🟢 Abierta' : '🔴 Cerrada'} - {caja.CodLocal || '-'} - {caja.NroRend} - {caja.DesEmpresa || 'Sin empresa'}
                         </option>
                       ))}
                 </select>
@@ -2534,6 +3178,19 @@ export default function HomePage() {
                   </svg>
                   Imprimir
                 </button>
+                {/* Botón eliminar - Solo SUPER_ADMIN y STAFF */}
+                {['SUPER_ADMIN', 'STAFF'].includes(session?.user?.role || '') && (
+                  <button
+                    onClick={() => handleEliminarPlanilla(selectedPlanilla.id, selectedPlanilla.nroPlanilla)}
+                    className="px-4 py-2 bg-red-500/80 hover:bg-red-600 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    title="Eliminar planilla"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Eliminar
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setShowPlanillaDetailModal(false)
@@ -2603,6 +3260,34 @@ export default function HomePage() {
                 )}
               </div>
 
+              {/* 🆕 Botón de editar - Admins pueden editar pendientes/rechazadas, usuarios solo rechazadas propias */}
+              {(() => {
+                const adminRoles = ['SUPER_ADMIN', 'VERIFICADOR', 'ORG_ADMIN', 'STAFF']
+                const isAdmin = adminRoles.includes(session?.user?.role || '')
+                const isCreator = selectedPlanilla.userId === session?.user?.id
+                const canEdit = isAdmin
+                  ? ['RECHAZADA', 'PENDIENTE_APROBACION'].includes(selectedPlanilla.estadoAprobacion)
+                  : selectedPlanilla.estadoAprobacion === 'RECHAZADA' && isCreator
+                return canEdit ? (
+                  <div className="mb-6">
+                    <button
+                      onClick={() => {
+                        window.location.href = `/planillas-movilidad/${selectedPlanilla.id}/editar`
+                      }}
+                      className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-4 rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      ✏️ Editar Planilla
+                    </button>
+                    <p className="text-xs text-center text-gray-600 mt-2">
+                      {isAdmin ? 'Editar esta planilla' : 'Corrige los campos marcados con error y vuelve a enviar para aprobación'}
+                    </p>
+                  </div>
+                ) : null
+              })()}
+
               {/* 🆕 Sección para asignar destino (solo si está aprobada y no asignada) */}
               {selectedPlanilla.estadoAprobacion === 'APROBADA' && !selectedPlanilla.aplicadaEn && (
                 <div className="mb-6 bg-indigo-50 p-6 rounded-xl border-2 border-indigo-300">
@@ -2629,7 +3314,11 @@ export default function HomePage() {
                           name="assignDestinationType"
                           value="RENDICION"
                           checked={assignDestinationType === 'RENDICION'}
-                          onChange={(e) => setAssignDestinationType(e.target.value as 'RENDICION')}
+                          onChange={(e) => {
+                            setAssignDestinationType(e.target.value as 'RENDICION')
+                            setAssignRendicionNumber('')
+                            loadAvailableRendiciones()
+                          }}
                           className="w-4 h-4 text-indigo-600"
                         />
                         <span className="text-sm font-medium text-gray-700">Rendición</span>
@@ -2640,7 +3329,12 @@ export default function HomePage() {
                           name="assignDestinationType"
                           value="CAJA_CHICA"
                           checked={assignDestinationType === 'CAJA_CHICA'}
-                          onChange={(e) => setAssignDestinationType(e.target.value as 'CAJA_CHICA')}
+                          onChange={(e) => {
+                            setAssignDestinationType(e.target.value as 'CAJA_CHICA')
+                            setAssignCajaChicaNumber('')
+                            setAssignCodLocal('')
+                            loadAvailableCajasChicas()
+                          }}
                           className="w-4 h-4 text-indigo-600"
                         />
                         <span className="text-sm font-medium text-gray-700">Caja Chica</span>
@@ -2648,35 +3342,71 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Input para número de rendición */}
+                  {/* Select para rendición */}
                   {assignDestinationType === 'RENDICION' && (
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Número de Rendición:
+                        Seleccionar Rendición:
                       </label>
-                      <input
-                        type="text"
-                        value={assignRendicionNumber}
-                        onChange={(e) => setAssignRendicionNumber(e.target.value)}
-                        placeholder="Ej: 001-2024"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      />
+                      {loadingAvailableList ? (
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                          Cargando rendiciones...
+                        </div>
+                      ) : (
+                        <select
+                          value={assignRendicionNumber}
+                          onChange={(e) => setAssignRendicionNumber(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900"
+                        >
+                          <option value="">-- Seleccione una rendición --</option>
+                          {availableRendiciones.map((rend) => (
+                            <option key={rend.NroRend} value={rend.NroRend}>
+                              {rend.CodEstado === '00' ? '🟢 Abierta' : '🔴 Cerrada'} - Rendición N° {rend.NroRend} - Usuario: {rend.CodUserAsg || '-'}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {availableRendiciones.length === 0 && !loadingAvailableList && (
+                        <p className="text-xs text-orange-600 mt-1">No hay rendiciones abiertas disponibles</p>
+                      )}
                     </div>
                   )}
 
-                  {/* Input para número de caja chica */}
+                  {/* Select para caja chica */}
                   {assignDestinationType === 'CAJA_CHICA' && (
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Número de Caja Chica:
+                        Seleccionar Caja Chica:
                       </label>
-                      <input
-                        type="text"
-                        value={assignCajaChicaNumber}
-                        onChange={(e) => setAssignCajaChicaNumber(e.target.value)}
-                        placeholder="Ej: CC-001-2024"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      />
+                      {loadingAvailableList ? (
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                          Cargando cajas chicas...
+                        </div>
+                      ) : (
+                        <select
+                          value={assignCajaChicaNumber}
+                          onChange={(e) => {
+                            const nroRend = e.target.value
+                            setAssignCajaChicaNumber(nroRend)
+                            // Obtener el CodLocal de la caja seleccionada
+                            const cajaSeleccionada = availableCajasChicas.find(c => String(c.NroRend) === String(nroRend))
+                            setAssignCodLocal(cajaSeleccionada?.CodLocal || '')
+                          }}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900"
+                        >
+                          <option value="">-- Seleccione una caja chica --</option>
+                          {availableCajasChicas.map((caja) => (
+                            <option key={caja.NroRend} value={caja.NroRend}>
+                              {caja.CodEstado === '00' ? '🟢 Abierta' : '🔴 Cerrada'} - {caja.CodLocal || '-'} - {caja.NroRend} - {caja.DesEmpresa || 'Sin empresa'}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {availableCajasChicas.length === 0 && !loadingAvailableList && (
+                        <p className="text-xs text-orange-600 mt-1">No hay cajas chicas abiertas disponibles</p>
+                      )}
                     </div>
                   )}
 
@@ -2925,12 +3655,100 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Imagen con zoom */}
+              {/* Sección de Edición - Arriba de la imagen */}
+              <div className="mb-6">
+                <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center text-white text-sm">
+                    ✏️
+                  </span>
+                  Editar Información
+                </h4>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Concepto del Gasto
+                      </label>
+                      <input
+                        type="text"
+                        value={editingConcepto}
+                        onChange={(e) => setEditingConcepto(e.target.value)}
+                        placeholder="Ej: Materiales de oficina, Transporte, etc."
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-900 bg-white placeholder-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Observación / Comentarios
+                      </label>
+                      <input
+                        type="text"
+                        value={editingObservacion}
+                        onChange={(e) => setEditingObservacion(e.target.value)}
+                        placeholder="Agregar observaciones..."
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-900 bg-white placeholder-gray-400"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleSaveInvoice}
+                      disabled={savingInvoice}
+                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {savingInvoice ? (
+                        <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      Guardar Cambios
+                    </button>
+                    <button
+                      onClick={() => setShowAssignToModal(true)}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Asignar a Rendición/Caja
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Imagen con zoom y controles de rotación */}
               <div className="mb-6 relative group">
+                {/* Botones de rotación */}
+                <div className="absolute top-3 left-3 z-10 flex gap-2">
+                  <button
+                    onClick={() => handleRotateImage('left')}
+                    className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-lg transition-colors"
+                    title="Girar izquierda"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleRotateImage('right')}
+                    className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-lg transition-colors"
+                    title="Girar derecha"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                    </svg>
+                  </button>
+                </div>
                 <img
                   src={selectedInvoice.imageUrl}
                   alt="Invoice"
-                  className="w-full rounded-2xl shadow-lg cursor-zoom-in"
+                  className="w-full rounded-2xl shadow-lg cursor-zoom-in transition-transform duration-300"
+                  style={{ transform: `rotate(${imageRotation}deg)` }}
                   onClick={(e) => {
                     e.currentTarget.classList.toggle('scale-150')
                     e.currentTarget.classList.toggle('cursor-zoom-out')
@@ -3226,6 +4044,67 @@ export default function HomePage() {
                   </pre>
                 </details>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para asignar a Rendición o Caja Chica */}
+      {showAssignToModal && selectedInvoice && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowAssignToModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
+              <h3 className="font-bold text-xl">Asignar Documento</h3>
+              <p className="text-sm text-white/80">Asignar a rendición o caja chica</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tipo de Asignación
+                </label>
+                <select
+                  value={assignToType}
+                  onChange={(e) => setAssignToType(e.target.value as 'RENDICION' | 'CAJA_CHICA' | '')}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-indigo-500 text-gray-900 bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="RENDICION">Rendición de Gastos</option>
+                  <option value="CAJA_CHICA">Caja Chica</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Número
+                </label>
+                <input
+                  type="text"
+                  value={assignToNumber}
+                  onChange={(e) => setAssignToNumber(e.target.value)}
+                  placeholder={assignToType === 'CAJA_CHICA' ? 'Número de caja chica' : 'Número de rendición'}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-indigo-500 text-gray-900 bg-white placeholder-gray-400"
+                />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowAssignToModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl hover:bg-gray-300 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAssignInvoiceTo}
+                  disabled={savingInvoice || !assignToType || !assignToNumber}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50"
+                >
+                  {savingInvoice ? 'Guardando...' : 'Asignar'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

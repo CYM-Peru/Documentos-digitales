@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limit = parseInt(searchParams.get('limit') || '500') // Aumentado para mostrar todos los docs
     const status = searchParams.get('status')
     const userId = searchParams.get('userId') // 🆕 Filtro por usuario
     const tipoOperacion = searchParams.get('tipoOperacion') // 🆕 Filtro por tipo de operación
@@ -24,13 +24,16 @@ export async function GET(request: NextRequest) {
       organizationId: session.user.organizationId,
     }
 
-    // Si el usuario es USER (no admin), solo ver sus propias facturas
-    if (session.user.role === 'USER') {
+    // Solo estos roles pueden ver TODAS las facturas de la organización
+    const canViewAll = ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF', 'VERIFICADOR', 'ADMIN', 'SUPERVISOR', 'APROBADOR'].includes(session.user.role)
+
+    // Por defecto, todos los usuarios solo ven sus propias facturas
+    // A menos que tengan un rol que permite ver todas
+    if (!canViewAll) {
+      // USER_L1, USER_L2, USER_L3 y cualquier otro rol solo ven sus propias facturas
       where.userId = session.user.id
-    }
-    // Si es ORG_ADMIN o SUPER_ADMIN, ve todas las facturas de la organización
-    // pero puede filtrar por usuario específico
-    else if (userId) {
+    } else if (userId) {
+      // Si puede ver todas Y se pasa filtro de usuario, filtrar por ese usuario
       where.userId = userId
     }
 

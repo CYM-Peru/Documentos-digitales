@@ -6,7 +6,10 @@ import { SqlServerService } from '@/services/sqlserver'
 import { decrypt } from '@/lib/encryption'
 
 /**
- * GET /api/cajas-chicas - Obtiene las cajas chicas pendientes del usuario logueado
+ * GET /api/cajas-chicas - Obtiene las cajas chicas del usuario logueado
+ * Query params:
+ *   - soloAbiertas: "true" o "false" - Filtra solo CodEstado='00' (abiertas) o '01' (cerradas)
+ *   - Si no se pasa soloAbiertas, por defecto retorna solo abiertas (true)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +18,18 @@ export async function GET(request: NextRequest) {
     if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Obtener parámetro de query
+    const { searchParams } = new URL(request.url)
+    const soloAbiertasParam = searchParams.get('soloAbiertas')
+    // Si no se pasa el parámetro, por defecto es true (solo abiertas)
+    // Si se pasa 'true', retorna true (solo abiertas)
+    // Si se pasa 'false', retorna false (solo cerradas)
+    // Si se pasa 'null', retorna null (todas)
+    const soloAbiertas: boolean | null =
+      soloAbiertasParam === null ? true :
+      soloAbiertasParam === 'null' ? null :
+      soloAbiertasParam !== 'false'
 
     // Obtener configuración de SQL Server
     const settings = await prisma.organizationSettings.findFirst({
@@ -31,19 +46,31 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Extraer el username del email (parte antes del @)
-    const userEmail = session.user.email || ''
-    const username = userEmail.split('@')[0]
+    // Verificar si el usuario puede ver TODAS las cajas chicas
+    // STAFF, SUPER_ADMIN, VERIFICADOR y APROBADOR ven todas, los demás solo las suyas
+    const canViewAll = ['SUPER_ADMIN', 'STAFF', 'VERIFICADOR', 'APROBADOR'].includes(session.user.role)
+
+    // Obtener el username del usuario desde la base de datos
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { username: true, email: true },
+    })
+
+    // Usar el username del usuario, o extraer del email como fallback
+    const username = user?.username || user?.email?.split('@')[0] || ''
 
     console.log('💰💰💰 [CAJAS-CHICAS API] ===== INICIO =====')
-    console.log('💰 User email:', userEmail)
-    console.log('💰 Username extraído:', username)
-    console.log('💰 Session user:', JSON.stringify(session.user, null, 2))
+    console.log('💰 User email:', user?.email)
+    console.log('💰 Username (de DB):', user?.username)
+    console.log('💰 Username usado:', username)
+    console.log('💰 User role:', session.user.role)
+    console.log('💰 Can view all:', canViewAll)
+    console.log('💰 Solo abiertas:', soloAbiertas)
 
-    if (!username) {
-      console.log('❌ Username vacío!')
+    if (!canViewAll && !username) {
+      console.log('❌ Username vacío y no puede ver todas!')
       return NextResponse.json(
-        { error: 'Email de usuario inválido' },
+        { error: 'Usuario sin username asignado' },
         { status: 400 }
       )
     }
@@ -59,10 +86,12 @@ export async function GET(request: NextRequest) {
       trustServerCertificate: settings.sqlServerTrustCert,
     })
 
-    console.log('💰 Llamando a getCajasChicasPendientes con username:', username)
+    // Si puede ver todas, no pasar filtro de usuario; si no, filtrar por su username
+    const filterUsername = canViewAll ? null : username
+    console.log('💰 Llamando a getCajasChicasPendientes con username:', filterUsername || 'TODAS (sin filtro)')
 
-    // Obtener cajas chicas pendientes
-    const cajasChicas = await sqlService.getCajasChicasPendientes(username)
+    // Obtener cajas chicas (con filtro de estado)
+    const cajasChicas = await sqlService.getCajasChicasPendientes(filterUsername, soloAbiertas)
 
     console.log('💰 Resultado de getCajasChicasPendientes:', JSON.stringify(cajasChicas, null, 2))
     console.log('💰 Número de cajas chicas encontradas:', cajasChicas.length)
@@ -76,6 +105,7 @@ export async function GET(request: NextRequest) {
       success: true,
       cajasChicas,
       username,
+      soloAbiertas,
     })
   } catch (error: any) {
     console.error('Get cajas chicas error:', error)

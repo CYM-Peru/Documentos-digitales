@@ -6,7 +6,10 @@ import { SqlServerService } from '@/services/sqlserver'
 import { decrypt } from '@/lib/encryption'
 
 /**
- * GET /api/rendiciones - Obtiene las rendiciones pendientes del usuario logueado
+ * GET /api/rendiciones - Obtiene las rendiciones del usuario logueado
+ * Query params:
+ *   - soloAbiertas: "true" o "false" - Filtra solo CodEstado='00' (abiertas) o '01' (cerradas)
+ *   - Si no se pasa soloAbiertas, por defecto retorna solo abiertas (true)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +18,18 @@ export async function GET(request: NextRequest) {
     if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Obtener parámetro de query
+    const { searchParams } = new URL(request.url)
+    const soloAbiertasParam = searchParams.get('soloAbiertas')
+    // Si no se pasa el parámetro, por defecto es true (solo abiertas)
+    // Si se pasa 'true', retorna true (solo abiertas)
+    // Si se pasa 'false', retorna false (solo cerradas)
+    // Si se pasa 'null', retorna null (todas)
+    const soloAbiertas: boolean | null =
+      soloAbiertasParam === null ? true :
+      soloAbiertasParam === 'null' ? null :
+      soloAbiertasParam !== 'false'
 
     // Obtener configuración de SQL Server
     const settings = await prisma.organizationSettings.findFirst({
@@ -31,13 +46,31 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Extraer el username del email (parte antes del @)
-    const userEmail = session.user.email || ''
-    const username = userEmail.split('@')[0]
+    // Verificar si el usuario puede ver TODAS las rendiciones
+    // STAFF, SUPER_ADMIN, VERIFICADOR y APROBADOR ven todas, los demás solo las suyas
+    const canViewAll = ['SUPER_ADMIN', 'STAFF', 'VERIFICADOR', 'APROBADOR'].includes(session.user.role)
 
-    if (!username) {
+    // Obtener el username del usuario desde la base de datos
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { username: true, email: true },
+    })
+
+    // Usar el username del usuario, o extraer del email como fallback
+    const username = user?.username || user?.email?.split('@')[0] || ''
+
+    console.log('📋📋📋 [RENDICIONES API] ===== INICIO =====')
+    console.log('📋 User email:', user?.email)
+    console.log('📋 Username (de DB):', user?.username)
+    console.log('📋 Username usado:', username)
+    console.log('📋 User role:', session.user.role)
+    console.log('📋 Can view all:', canViewAll)
+    console.log('📋 Solo abiertas:', soloAbiertas)
+
+    if (!canViewAll && !username) {
+      console.log('❌ Username vacío y no puede ver todas!')
       return NextResponse.json(
-        { error: 'Email de usuario inválido' },
+        { error: 'Usuario sin username asignado' },
         { status: 400 }
       )
     }
@@ -53,16 +86,26 @@ export async function GET(request: NextRequest) {
       trustServerCertificate: settings.sqlServerTrustCert,
     })
 
-    // Obtener rendiciones pendientes
-    const rendiciones = await sqlService.getRendicionesPendientes(username)
+    // Si puede ver todas, no pasar filtro de usuario; si no, filtrar por su username
+    const filterUsername = canViewAll ? null : username
+    console.log('📋 Llamando a getRendicionesPendientes con username:', filterUsername || 'TODAS (sin filtro)')
+
+    // Obtener rendiciones (con filtro de estado)
+    const rendiciones = await sqlService.getRendicionesPendientes(filterUsername, soloAbiertas)
+
+    console.log('📋 Resultado de getRendicionesPendientes:', JSON.stringify(rendiciones, null, 2))
+    console.log('📋 Número de rendiciones encontradas:', rendiciones.length)
 
     // Cerrar conexión
     await sqlService.close()
+
+    console.log('📋📋📋 [RENDICIONES API] ===== FIN =====')
 
     return NextResponse.json({
       success: true,
       rendiciones,
       username,
+      soloAbiertas,
     })
   } catch (error: any) {
     console.error('Get rendiciones error:', error)

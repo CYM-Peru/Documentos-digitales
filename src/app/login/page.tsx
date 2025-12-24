@@ -103,25 +103,25 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Email Input */}
+            {/* Usuario o Email Input */}
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-semibold text-indigo-100">
-                Correo electrónico
+                Usuario o correo
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <svg className="w-5 h-5 text-indigo-300 group-focus-within:text-indigo-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full pl-12 pr-4 py-3.5 bg-white/10 border-2 border-white/20 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 text-white placeholder:text-indigo-300/50 backdrop-blur-xl transition-all duration-200"
-                  placeholder="tu@email.com"
+                  placeholder="AARROYO o tu@email.com"
                 />
               </div>
             </div>

@@ -248,6 +248,16 @@ export default function PrintPlanillaPage() {
           <p>Documento generado electrónicamente - {new Date().toLocaleString('es-PE')}</p>
         </div>
 
+        {/* Texto Legal - Esquina inferior */}
+        <div className="mt-6 text-left">
+          <p className="text-[8px] text-gray-600 leading-tight">
+            <span className="font-semibold">BASE LEGAL:</span> Inciso a1 del art. 37° de la Ley de Impuesto a la Renta.
+          </p>
+          <p className="text-[8px] text-gray-600 leading-tight">
+            Inciso v del artículo 21° del Reglamento de la Ley del Impuesto a la Renta.
+          </p>
+        </div>
+
         {/* Print Button (only visible on screen) */}
         <div className="no-print mt-8 flex justify-center gap-4">
           <button
