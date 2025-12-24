@@ -119,6 +119,7 @@ export class SqlServerService {
   /**
    * Sanitiza strings para prevenir problemas con caracteres especiales
    * Remueve caracteres de control y normaliza espacios
+   * PUEDE retornar null si el input es vacío
    */
   private sanitizeString(input: string | null | undefined, maxLength: number): string | null {
     if (!input) return null
@@ -130,7 +131,41 @@ export class SqlServerService {
     sanitized = sanitized.replace(/\s+/g, ' ').trim()
 
     // Truncar al tamaño máximo
-    return sanitized.substring(0, maxLength)
+    return sanitized.substring(0, maxLength) || null
+  }
+
+  /**
+   * Sanitiza strings - retorna "SV" (sin valor) si no hay dato
+   * NO usa valores inventados como "CALZADOS AZALEIA" o nombres falsos
+   * Usa "SV" como marcador genérico para campos vacíos
+   */
+  private sanitizeRequired(input: string | null | undefined, maxLength: number, defaultValue: string = 'SV'): string {
+    // Si no hay input, retornar el valor por defecto (SV = sin valor)
+    if (!input || input.trim() === '') return defaultValue
+
+    // Remover caracteres de control y caracteres no imprimibles
+    let sanitized = input.replace(/[\x00-\x1F\x7F]/g, '')
+
+    // Normalizar múltiples espacios a uno solo
+    sanitized = sanitized.replace(/\s+/g, ' ').trim()
+
+    // Truncar al tamaño máximo
+    return sanitized.substring(0, maxLength) || defaultValue
+  }
+
+  /**
+   * Valida que los campos críticos tengan valor antes de insertar
+   * Retorna lista de campos faltantes
+   */
+  private validateCriticalFields(data: Record<string, any>, requiredFields: string[]): string[] {
+    const missing: string[] = []
+    for (const field of requiredFields) {
+      const value = data[field]
+      if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+        missing.push(field)
+      }
+    }
+    return missing
   }
 
   /**
@@ -203,17 +238,25 @@ export class SqlServerService {
         descripcionProducto = 'SERVICIO PROFESIONAL'
       }
 
-      // Sanitizar y truncar campos según límites reales de SQL Server
-      const descripcion = this.sanitizeString(descripcionProducto, 255)
-      const razonSocial = this.sanitizeString(invoice.razonSocialEmisor, 255)
-      const tipoDoc = this.sanitizeString(invoice.documentType, 255)
-      const serieNum = this.sanitizeString(invoice.serieNumero, 255)
-      const estado = this.sanitizeString(invoice.status, 255)
-      const moneda = this.sanitizeString(invoice.currency, 255)
-      const usuario = this.sanitizeString(invoice.usuario, 100)
+      // Sanitizar campos - NO usar valores por defecto inventados
+      const descripcion = this.sanitizeRequired(descripcionProducto, 255)
+      const razonSocial = this.sanitizeRequired(invoice.razonSocialEmisor, 255)
+      const tipoDoc = this.sanitizeRequired(invoice.documentType, 255)
+      const serieNum = this.sanitizeRequired(invoice.serieNumero, 255)
+      const estado = this.sanitizeRequired(invoice.status, 255) || 'PENDIENTE' // Estado sí tiene default válido
+      const moneda = this.sanitizeRequired(invoice.currency, 255) || 'PEN' // Moneda sí tiene default válido
+      const usuario = this.sanitizeRequired(invoice.usuario, 100)
       const nroRend = invoice.nroRendicion ? parseInt(invoice.nroRendicion, 10) : null
       // RUC debe mantenerse como string para preservar ceros iniciales
-      const rucEmisor = this.sanitizeString(invoice.rucEmisor, 50)
+      const rucEmisor = this.sanitizeRequired(invoice.rucEmisor, 50)
+
+      // Validar campos críticos y loguear advertencia si faltan
+      const camposCriticos = { rucEmisor, razonSocial, serieNum }
+      const faltantes = this.validateCriticalFields(camposCriticos, ['rucEmisor', 'razonSocial', 'serieNum'])
+      if (faltantes.length > 0) {
+        console.warn(`⚠️ SQL Server - Campos vacíos en factura ${invoice.id}: ${faltantes.join(', ')}`)
+        console.warn(`   El documento requiere revisión manual para completar estos campos`)
+      }
 
       const result = await pool
         .request()
@@ -646,17 +689,25 @@ export class SqlServerService {
         }
       }
 
-      // Sanitizar y truncar campos
-      const descripcion = this.sanitizeString(descripcionProducto, 255)
-      const razonSocial = this.sanitizeString(invoice.razonSocialEmisor, 255)
-      const tipoDoc = this.sanitizeString(invoice.documentType, 255)
-      const serieNum = this.sanitizeString(invoice.serieNumero, 50)
-      const estado = this.sanitizeString(invoice.status, 50)
-      const moneda = this.sanitizeString(invoice.currency, 10)
-      const usuario = this.sanitizeString(invoice.usuario, 20)
+      // Sanitizar campos - NO usar valores por defecto inventados
+      const descripcion = this.sanitizeRequired(descripcionProducto, 255)
+      const razonSocial = this.sanitizeRequired(invoice.razonSocialEmisor, 255)
+      const tipoDoc = this.sanitizeRequired(invoice.documentType, 255)
+      const serieNum = this.sanitizeRequired(invoice.serieNumero, 50)
+      const estado = this.sanitizeRequired(invoice.status, 50) || 'PENDIENTE' // Estado sí tiene default válido
+      const moneda = this.sanitizeRequired(invoice.currency, 10) || 'PEN' // Moneda sí tiene default válido
+      const usuario = this.sanitizeRequired(invoice.usuario, 20)
       const nroCajaChica = invoice.nroRendicion ? parseInt(invoice.nroRendicion, 10) : null
-      const rucEmisor = this.sanitizeString(invoice.rucEmisor, 20)
-      const codLocal = this.sanitizeString(invoice.codLocal, 20)
+      const rucEmisor = this.sanitizeRequired(invoice.rucEmisor, 20)
+      const codLocal = this.sanitizeRequired(invoice.codLocal, 20)
+
+      // Validar campos críticos y loguear advertencia si faltan
+      const camposCriticos = { rucEmisor, razonSocial, serieNum }
+      const faltantes = this.validateCriticalFields(camposCriticos, ['rucEmisor', 'razonSocial', 'serieNum'])
+      if (faltantes.length > 0) {
+        console.warn(`⚠️ SQL Server - Campos vacíos en caja chica ${invoice.id}: ${faltantes.join(', ')}`)
+        console.warn(`   El documento requiere revisión manual para completar estos campos`)
+      }
 
       const result = await pool
         .request()
@@ -765,20 +816,28 @@ export class SqlServerService {
 
       const pool = await this.getPool()
 
-      // Sanitizar campos
-      const nroPlanilla = this.sanitizeString(planilla.nroPlanilla, 50)
-      const razonSocial = this.sanitizeString(planilla.razonSocial, 255)
-      const ruc = this.sanitizeString(planilla.ruc, 50)
-      const periodo = this.sanitizeString(planilla.periodo, 100)
-      const nombresApellidos = this.sanitizeString(planilla.nombresApellidos, 255)
-      const cargo = this.sanitizeString(planilla.cargo, 255)
-      const dni = this.sanitizeString(planilla.dni, 20)
-      const centroCosto = this.sanitizeString(planilla.centroCosto, 100)
-      const usuario = this.sanitizeString(planilla.usuario, 100)
-      const estado = this.sanitizeString(planilla.estado || 'PENDIENTE', 255)
+      // Sanitizar campos - NO usar valores por defecto inventados
+      const nroPlanilla = this.sanitizeRequired(planilla.nroPlanilla, 50)
+      const razonSocial = this.sanitizeRequired(planilla.razonSocial, 255)
+      const ruc = this.sanitizeRequired(planilla.ruc, 50)
+      const periodo = this.sanitizeRequired(planilla.periodo, 100)
+      const nombresApellidos = this.sanitizeRequired(planilla.nombresApellidos, 255)
+      const cargo = this.sanitizeRequired(planilla.cargo, 255)
+      const dni = this.sanitizeRequired(planilla.dni, 20)
+      const centroCosto = this.sanitizeRequired(planilla.centroCosto, 100)
+      const usuario = this.sanitizeRequired(planilla.usuario, 100)
+      const estado = this.sanitizeRequired(planilla.estado, 255) || 'PENDIENTE' // Estado sí tiene default válido
+
+      // Validar campos críticos y loguear advertencia si faltan
+      const camposCriticos = { nombresApellidos, dni }
+      const faltantes = this.validateCriticalFields(camposCriticos, ['nombresApellidos', 'dni'])
+      if (faltantes.length > 0) {
+        console.warn(`⚠️ SQL Server - Campos vacíos en planilla movilidad ${planilla.id}: ${faltantes.join(', ')}`)
+        console.warn(`   El documento requiere revisión manual para completar estos campos`)
+      }
       const nroRend = planilla.nroRendicion ? parseInt(planilla.nroRendicion, 10) : null
       const nroCajaChica = planilla.nroCajaChica ? parseInt(planilla.nroCajaChica, 10) : null
-      const imageUrl = this.sanitizeString(planilla.imageUrl, 500)
+      const imageUrl = this.sanitizeString(planilla.imageUrl, 500) // Este puede ser null
 
       // Verificar si ya existe
       const existsCheck = await pool
