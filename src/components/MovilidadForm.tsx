@@ -48,7 +48,14 @@ export default function MovilidadForm({
   const [nroPlanilla, setNroPlanilla] = useState('')
   const [razonSocial, setRazonSocial] = useState('CALZADOS AZALEIA PERU S.A.')
   const [ruc, setRuc] = useState('90000000004')
-  const [periodo, setPeriodo] = useState('')
+  // Generar periodo actual: MES AÑO (ej: DICIEMBRE 2025)
+  const getCurrentPeriodo = () => {
+    const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+                   'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
+    const now = new Date()
+    return `${meses[now.getMonth()]} ${now.getFullYear()}`
+  }
+  const [periodo, setPeriodo] = useState(getCurrentPeriodo())
   const [fechaEmision, setFechaEmision] = useState(new Date().toISOString().split('T')[0])
   const [nombresApellidos, setNombresApellidos] = useState('')
   const [cargo, setCargo] = useState('')
@@ -644,7 +651,7 @@ export default function MovilidadForm({
                         type="number"
                         step="0.01"
                         value={gasto.montoViaje || ''}
-                        onChange={(e) => actualizarGasto(index, 'montoViaje', parseFloat(e.target.value))}
+                        onChange={(e) => actualizarGasto(index, 'montoViaje', parseFloat(e.target.value) || 0)}
                         className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg text-gray-900"
                         placeholder="0.00"
                       />
