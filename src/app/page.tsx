@@ -1258,30 +1258,15 @@ export default function HomePage() {
     return null
   }
 
-  // Función para determinar si una rendición/caja está cerrada
-  // TODO: El criterio exacto se definirá después (puede ser por campo 'cerrada', fecha, estado, etc.)
-  const isRendicionCerrada = (inv: Invoice): boolean => {
-    // Por ahora retorna false (todas abiertas) hasta que se defina el criterio
-    // Posibles criterios futuros:
-    // - inv.cerrada === true
-    // - inv.estadoCierre === 'CERRADA'
-    // - Fecha de cierre pasada
-    // - Estado específico del SQL Server
-    return false
-  }
+  // El filtro de Abiertas/Cerradas se aplica a las RENDICIONES del SQL Server (estado rendiciones)
+  // NO a los documentos/invoices de PostgreSQL
+  // La API ya filtra las rendiciones por CodEstado ('00' abiertas, '01' cerradas)
 
   const filteredInvoices = invoices
     .filter(inv => {
       if (filter === 'completed') return inv.status === 'COMPLETED'
       if (filter === 'processing') return inv.status === 'PROCESSING' || inv.status === 'PENDING'
       if (filter === 'failed') return inv.status === 'FAILED'
-      return true
-    })
-    .filter(inv => {
-      // Filtrar por estado de cierre (abiertas/cerradas)
-      if (estadoCierre === 'todas') return true
-      if (estadoCierre === 'cerradas') return isRendicionCerrada(inv)
-      if (estadoCierre === 'abiertas') return !isRendicionCerrada(inv)
       return true
     })
     // NOTA: Ya no filtramos por tipoOperacion aquí porque la API ya lo hace
@@ -1743,11 +1728,13 @@ export default function HomePage() {
               </select>
               <p className="text-xs text-gray-600 mt-1 hidden md:block">
                 {rendiciones.length === 0 && !loadingRendiciones ? (
-                  <span className="text-orange-600">⚠️ No tienes {operationType === 'RENDICION' ? 'rendiciones' : 'cajas chicas'} pendientes (Estado 00) en SQL Server</span>
+                  <span className="text-orange-600">
+                    ⚠️ No hay {operationType === 'RENDICION' ? 'rendiciones' : 'cajas chicas'} {estadoCierre === 'abiertas' ? 'abiertas (00)' : estadoCierre === 'cerradas' ? 'cerradas (01)' : ''} en SQL Server
+                  </span>
                 ) : nroRendicion ? (
-                  <span>🔍 Mostrando solo documentos de {operationType === 'RENDICION' ? 'Rendición' : 'Caja Chica'} N° {nroRendicion}</span>
+                  <span>🔍 Mostrando documentos de {operationType === 'RENDICION' ? 'Rendición' : 'Caja Chica'} N° {nroRendicion}</span>
                 ) : (
-                  <span>✅ Selecciona una {operationType === 'RENDICION' ? 'rendición' : 'caja chica'} para filtrar documentos</span>
+                  <span>✅ {rendiciones.length} {estadoCierre === 'abiertas' ? 'abiertas' : estadoCierre === 'cerradas' ? 'cerradas' : 'disponibles'} - Selecciona para filtrar</span>
                 )}
               </p>
             </div>
@@ -1977,7 +1964,11 @@ export default function HomePage() {
                 {filter === 'all' ? `Todas las ${getDocumentTypeName(true)}` : filter === 'completed' ? `${getDocumentTypeName(true)} Completadas` : filter === 'processing' ? `${getDocumentTypeName(true)} en Procesamiento` : `${getDocumentTypeName(true)} con Error`}
               </span>
               <span className="sm:hidden truncate">{getDocumentTypeName(true)}</span>
-              <span className="text-xs md:text-sm text-gray-500 flex-shrink-0">({operationType === 'PLANILLA_MOVILIDAD' ? planillas.length : filteredInvoices.length})</span>
+              <span className="text-xs md:text-sm text-gray-500 flex-shrink-0">
+                ({operationType === 'PLANILLA_MOVILIDAD' ? planillas.length :
+                  (operationType === 'RENDICION' || operationType === 'CAJA_CHICA') ? rendiciones.length :
+                  filteredInvoices.length})
+              </span>
             </h2>
 
             {/* View Mode Toggle & Export */}
