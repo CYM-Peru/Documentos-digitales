@@ -593,15 +593,9 @@ export default function HomePage() {
       // Consultar el endpoint correcto según el tipo de operación
       const endpoint = operationType === 'CAJA_CHICA' ? '/api/cajas-chicas' : '/api/rendiciones'
 
-      // Construir query params según estadoCierre
+      // SIEMPRE cargar TODAS las rendiciones (el filtro abiertas/cerradas se hace en frontend)
       const params = new URLSearchParams()
-      if (estadoCierre === 'abiertas') {
-        params.append('soloAbiertas', 'true')
-      } else if (estadoCierre === 'cerradas') {
-        params.append('soloAbiertas', 'false')
-      } else if (estadoCierre === 'todas') {
-        params.append('soloAbiertas', 'null')
-      }
+      params.append('soloAbiertas', 'null') // Cargar todas
 
       // Si está en modo trabajo, filtrar solo las del usuario logueado
       if (modoTrabajo) {
@@ -613,20 +607,20 @@ export default function HomePage() {
         params.append('filterByUser', filtroUsuarioRend)
       }
 
-      const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
-      console.log('🔄 Cargando:', url)
+      const url = `${endpoint}?${params.toString()}`
+      console.log('🔄 Cargando TODAS las rendiciones:', url)
       const response = await fetch(url)
       const data = await response.json()
 
       if (operationType === 'CAJA_CHICA') {
         if (data.success && data.cajasChicas) {
           setRendiciones(data.cajasChicas)
-          console.log(`💰 ${data.cajasChicas.length} cajas chicas ${estadoCierre} cargadas`)
+          console.log(`💰 ${data.cajasChicas.length} cajas chicas cargadas (todas)`)
         }
       } else {
         if (data.success && data.rendiciones) {
           setRendiciones(data.rendiciones)
-          console.log(`📋 ${data.rendiciones.length} rendiciones ${estadoCierre} cargadas`)
+          console.log(`📋 ${data.rendiciones.length} rendiciones cargadas (todas)`)
         }
       }
     } catch (error) {
@@ -634,15 +628,15 @@ export default function HomePage() {
     } finally {
       setLoadingRendiciones(false)
     }
-  }, [operationType, estadoCierre, modoTrabajo, filtroUsuarioRend])
+  }, [operationType, modoTrabajo, filtroUsuarioRend])
 
-  // Cargar rendiciones/cajas cuando cambien los filtros específicos
+  // Cargar rendiciones/cajas cuando cambien los filtros (excepto estadoCierre que se filtra en frontend)
   useEffect(() => {
     if (status === 'authenticated' && (operationType === 'RENDICION' || operationType === 'CAJA_CHICA')) {
-      console.log('🔄 Recargando rendiciones - estadoCierre:', estadoCierre, 'modoTrabajo:', modoTrabajo)
+      console.log('🔄 Recargando rendiciones - modoTrabajo:', modoTrabajo)
       loadRendiciones()
     }
-  }, [loadRendiciones, status, operationType, estadoCierre, modoTrabajo, filtroUsuarioRend])
+  }, [loadRendiciones, status, operationType, modoTrabajo, filtroUsuarioRend])
 
   // Cargar rendiciones disponibles para asignación de planillas
   const loadAvailableRendiciones = async () => {
@@ -1265,14 +1259,22 @@ export default function HomePage() {
   }, {} as Record<string, string>)
 
   // Función para obtener el estado de una rendición/caja chica
+  // Abiertas = CodEstado='00', Cerradas = todo lo demás (incluyendo sin rendición)
   const getRendicionStatus = (nroRendicion: number | string | undefined) => {
-    if (!nroRendicion) return { isOpen: true, label: '', color: '' }
+    if (!nroRendicion) return { isOpen: false, label: '⚪', color: 'bg-gray-100 text-gray-600 border-gray-300' } // Sin rendición = cerrada
     const codEstado = rendicionStatusMap[String(nroRendicion)]
     if (codEstado === '00') return { isOpen: true, label: '🟢', color: 'bg-green-100 text-green-800 border-green-300' }
-    if (codEstado === '01') return { isOpen: false, label: '🔴', color: 'bg-red-100 text-red-800 border-red-300' }
-    // Si no está en el mapa, asumimos que está cerrada o no disponible
-    return { isOpen: false, label: '⚪', color: 'bg-gray-100 text-gray-600 border-gray-300' }
+    // Todo lo demás (01, undefined, etc.) = cerrada
+    return { isOpen: false, label: '🔴', color: 'bg-red-100 text-red-800 border-red-300' }
   }
+
+  // Filtrar rendiciones según estadoCierre (para el desplegable)
+  const filteredRendiciones = rendiciones.filter(rend => {
+    if (estadoCierre === 'todas') return true
+    if (estadoCierre === 'abiertas') return rend.CodEstado === '00'
+    if (estadoCierre === 'cerradas') return rend.CodEstado !== '00'
+    return true
+  })
 
   const filteredInvoices = invoices
     .filter(inv => {
@@ -1285,8 +1287,8 @@ export default function HomePage() {
       // Filtrar por estado de cierre de la rendición asociada (solo para Rendiciones/Cajas)
       if (operationType !== 'RENDICION' && operationType !== 'CAJA_CHICA') return true
       if (estadoCierre === 'todas') return true
-      if (!inv.nroRendicion) return estadoCierre === 'abiertas' // Sin rendición = mostrar en abiertas
       const status = getRendicionStatus(inv.nroRendicion)
+      // Abiertas: solo CodEstado='00', Cerradas: todo lo demás (incluyendo sin rendición)
       if (estadoCierre === 'abiertas') return status.isOpen
       if (estadoCierre === 'cerradas') return !status.isOpen
       return true
@@ -1718,8 +1720,8 @@ export default function HomePage() {
                 className="w-full px-3 py-2 md:px-4 md:py-3 border-2 border-yellow-400 rounded-lg md:rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-sm md:text-base text-gray-900 font-semibold bg-white"
                 disabled={loadingRendiciones}
               >
-                <option value="">📋 Ver todos los documentos ({invoices.length})</option>
-                {rendiciones.map((rend) => {
+                <option value="">📋 Ver todos los documentos ({filteredInvoices.length})</option>
+                {filteredRendiciones.map((rend) => {
                   const docCount = rendicionDocumentCounts[String(rend.NroRend)] || 0
                   const estadoLabel = rend.CodEstado === '00' ? '🟢 Abierta' : '🔴 Cerrada'
                   return (
@@ -1733,14 +1735,14 @@ export default function HomePage() {
                 })}
               </select>
               <p className="text-xs text-gray-600 mt-1 hidden md:block">
-                {rendiciones.length === 0 && !loadingRendiciones ? (
+                {filteredRendiciones.length === 0 && !loadingRendiciones ? (
                   <span className="text-orange-600">
                     ⚠️ No hay {operationType === 'RENDICION' ? 'rendiciones' : 'cajas chicas'} {estadoCierre === 'abiertas' ? 'abiertas (00)' : estadoCierre === 'cerradas' ? 'cerradas (01)' : ''} en SQL Server
                   </span>
                 ) : nroRendicion ? (
                   <span>🔍 Mostrando documentos de {operationType === 'RENDICION' ? 'Rendición' : 'Caja Chica'} N° {nroRendicion}</span>
                 ) : (
-                  <span>✅ {rendiciones.length} {estadoCierre === 'abiertas' ? 'abiertas' : estadoCierre === 'cerradas' ? 'cerradas' : 'disponibles'} - Selecciona para filtrar</span>
+                  <span>✅ {filteredRendiciones.length} {estadoCierre === 'abiertas' ? 'abiertas' : estadoCierre === 'cerradas' ? 'cerradas' : 'disponibles'} - Selecciona para filtrar</span>
                 )}
               </p>
             </div>
@@ -1971,9 +1973,7 @@ export default function HomePage() {
               </span>
               <span className="sm:hidden truncate">{getDocumentTypeName(true)}</span>
               <span className="text-xs md:text-sm text-gray-500 flex-shrink-0">
-                ({operationType === 'PLANILLA_MOVILIDAD' ? planillas.length :
-                  (operationType === 'RENDICION' || operationType === 'CAJA_CHICA') ? rendiciones.length :
-                  filteredInvoices.length})
+                ({operationType === 'PLANILLA_MOVILIDAD' ? planillas.length : filteredInvoices.length})
               </span>
             </h2>
 
