@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
     // Modo trabajo: filtrar solo las del usuario aunque sea admin
     const modoTrabajo = searchParams.get('modoTrabajo') === 'true'
 
+    // Filtro por usuario específico (para admins que quieren ver de otro usuario)
+    const filterByUser = searchParams.get('filterByUser') || ''
+
     // Obtener configuración de SQL Server
     const settings = await prisma.organizationSettings.findFirst({
       where: {
@@ -90,10 +93,19 @@ export async function GET(request: NextRequest) {
       trustServerCertificate: settings.sqlServerTrustCert,
     })
 
-    // Si está en modo trabajo, filtrar por username aunque sea admin
-    // Si puede ver todas y NO está en modo trabajo, no filtrar
-    // Si no puede ver todas, siempre filtrar por su username
-    const filterUsername = modoTrabajo ? username : (canViewAll ? null : username)
+    // Determinar el filtro de usuario:
+    // 1. Si hay filterByUser específico (admin filtrando por otro usuario), usar ese
+    // 2. Si está en modo trabajo, filtrar por username del usuario logueado
+    // 3. Si puede ver todas y NO está en modo trabajo, no filtrar
+    // 4. Si no puede ver todas, siempre filtrar por su username
+    let filterUsername: string | null = null
+    if (filterByUser && canViewAll) {
+      filterUsername = filterByUser
+    } else if (modoTrabajo) {
+      filterUsername = username
+    } else if (!canViewAll) {
+      filterUsername = username
+    }
     console.log('📋 Llamando a getRendicionesPendientes con username:', filterUsername || 'TODAS (sin filtro)')
 
     // Obtener rendiciones (con filtro de estado)

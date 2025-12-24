@@ -110,6 +110,7 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [columnCount, setColumnCount] = useState<4 | 5 | 6>(6) // Selector de columnas
   const [modoTrabajo, setModoTrabajo] = useState(false) // Toggle para ver solo mis documentos
+  const [filtroUsuarioRend, setFiltroUsuarioRend] = useState<string>('') // Filtro por usuario en rendiciones
   const [nroRendicion, setNroRendicion] = useState('')
   const [rendiciones, setRendiciones] = useState<Rendicion[]>([])
   const [loadingRendiciones, setLoadingRendiciones] = useState(false)
@@ -323,10 +324,9 @@ export default function HomePage() {
         loadPlanillas() // Por ahora mostrar planillas hasta tener pagina dedicada
       } else {
         loadInvoices()
-        loadRendiciones() // Recargar rendiciones/cajas chicas al cambiar tipo
       }
     }
-  }, [status, userFilter, operationType, estadoCierre, loadPlanillas, modoTrabajo])
+  }, [status, userFilter, operationType, loadPlanillas])
 
   // Auto-refresh SUPER AGRESIVO: actualización cada 1 segundo
   useEffect(() => {
@@ -578,12 +578,12 @@ export default function HomePage() {
     }
   }
 
-  const loadRendiciones = async () => {
+  const loadRendiciones = useCallback(async () => {
     try {
       setLoadingRendiciones(true)
 
-      // Si es planilla de movilidad, no cargar rendiciones/cajas chicas
-      if (operationType === 'PLANILLA_MOVILIDAD') {
+      // Si es planilla de movilidad o gasto reparable, no cargar rendiciones/cajas chicas
+      if (operationType === 'PLANILLA_MOVILIDAD' || operationType === 'GASTO_REPARABLE') {
         setRendiciones([])
         setLoadingRendiciones(false)
         return
@@ -602,23 +602,27 @@ export default function HomePage() {
         params.append('soloAbiertas', 'null')
       }
 
-      // Si está en modo trabajo, filtrar solo las del usuario
+      // Si está en modo trabajo, filtrar solo las del usuario logueado
       if (modoTrabajo) {
         params.append('modoTrabajo', 'true')
       }
 
+      // Si hay filtro por usuario específico (para admins)
+      if (filtroUsuarioRend) {
+        params.append('filterByUser', filtroUsuarioRend)
+      }
+
       const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
+      console.log('🔄 Cargando:', url)
       const response = await fetch(url)
       const data = await response.json()
 
       if (operationType === 'CAJA_CHICA') {
-        // Para cajas chicas, usar directamente (ya tienen NroRend)
         if (data.success && data.cajasChicas) {
           setRendiciones(data.cajasChicas)
           console.log(`💰 ${data.cajasChicas.length} cajas chicas ${estadoCierre} cargadas`)
         }
       } else {
-        // Para rendiciones, usar directamente
         if (data.success && data.rendiciones) {
           setRendiciones(data.rendiciones)
           console.log(`📋 ${data.rendiciones.length} rendiciones ${estadoCierre} cargadas`)
@@ -629,7 +633,14 @@ export default function HomePage() {
     } finally {
       setLoadingRendiciones(false)
     }
-  }
+  }, [operationType, estadoCierre, modoTrabajo, filtroUsuarioRend])
+
+  // Cargar rendiciones/cajas cuando cambien los filtros específicos
+  useEffect(() => {
+    if (status === 'authenticated' && (operationType === 'RENDICION' || operationType === 'CAJA_CHICA')) {
+      loadRendiciones()
+    }
+  }, [loadRendiciones, status, operationType])
 
   // Cargar rendiciones disponibles para asignación de planillas
   const loadAvailableRendiciones = async () => {
@@ -1855,25 +1866,49 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Toggle Modo Trabajo - Solo para roles que pueden ver todo */}
+          {/* Toggle Modo Trabajo y Filtro por Usuario - Solo para roles que pueden ver todo */}
           {(operationType === 'RENDICION' || operationType === 'CAJA_CHICA') &&
            ['SUPER_ADMIN', 'STAFF', 'VERIFICADOR', 'APROBADOR'].includes(session?.user?.role || '') && (
-            <div className="flex items-center justify-between pt-2 border-t border-gray-200 mt-2">
-              <span className="text-xs font-medium text-gray-700">
-                👤 Modo Trabajo (solo mis {operationType === 'CAJA_CHICA' ? 'cajas' : 'rendiciones'})
-              </span>
-              <button
-                onClick={() => setModoTrabajo(!modoTrabajo)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  modoTrabajo ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${
-                    modoTrabajo ? 'translate-x-6' : 'translate-x-1'
+            <div className="pt-2 border-t border-gray-200 mt-2 space-y-2">
+              {/* Toggle Modo Trabajo */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-700">
+                  👤 Solo mis {operationType === 'CAJA_CHICA' ? 'cajas' : 'rendiciones'}
+                </span>
+                <button
+                  onClick={() => {
+                    setModoTrabajo(!modoTrabajo)
+                    if (!modoTrabajo) setFiltroUsuarioRend('') // Limpiar filtro al activar modo trabajo
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    modoTrabajo ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gray-300'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${
+                      modoTrabajo ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Filtro por Usuario - Solo si NO está en modo trabajo */}
+              {!modoTrabajo && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-700 whitespace-nowrap">🔍 Usuario:</span>
+                  <select
+                    value={filtroUsuarioRend}
+                    onChange={(e) => setFiltroUsuarioRend(e.target.value)}
+                    className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Todos los usuarios</option>
+                    {/* Obtener usuarios únicos de las rendiciones */}
+                    {Array.from(new Set(rendiciones.map(r => r.CodUserAsg))).filter(Boolean).sort().map(user => (
+                      <option key={user} value={user}>{user}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
