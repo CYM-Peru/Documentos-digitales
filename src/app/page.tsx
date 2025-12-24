@@ -1258,15 +1258,37 @@ export default function HomePage() {
     return null
   }
 
-  // El filtro de Abiertas/Cerradas se aplica a las RENDICIONES del SQL Server (estado rendiciones)
-  // NO a los documentos/invoices de PostgreSQL
-  // La API ya filtra las rendiciones por CodEstado ('00' abiertas, '01' cerradas)
+  // Mapa para verificar si una caja/rendición está abierta o cerrada
+  const rendicionStatusMap = rendiciones.reduce((acc, rend) => {
+    acc[String(rend.NroRend)] = rend.CodEstado
+    return acc
+  }, {} as Record<string, string>)
+
+  // Función para obtener el estado de una rendición/caja chica
+  const getRendicionStatus = (nroRendicion: number | string | undefined) => {
+    if (!nroRendicion) return { isOpen: true, label: '', color: '' }
+    const codEstado = rendicionStatusMap[String(nroRendicion)]
+    if (codEstado === '00') return { isOpen: true, label: '🟢', color: 'bg-green-100 text-green-800 border-green-300' }
+    if (codEstado === '01') return { isOpen: false, label: '🔴', color: 'bg-red-100 text-red-800 border-red-300' }
+    // Si no está en el mapa, asumimos que está cerrada o no disponible
+    return { isOpen: false, label: '⚪', color: 'bg-gray-100 text-gray-600 border-gray-300' }
+  }
 
   const filteredInvoices = invoices
     .filter(inv => {
       if (filter === 'completed') return inv.status === 'COMPLETED'
       if (filter === 'processing') return inv.status === 'PROCESSING' || inv.status === 'PENDING'
       if (filter === 'failed') return inv.status === 'FAILED'
+      return true
+    })
+    .filter(inv => {
+      // Filtrar por estado de cierre de la rendición asociada (solo para Rendiciones/Cajas)
+      if (operationType !== 'RENDICION' && operationType !== 'CAJA_CHICA') return true
+      if (estadoCierre === 'todas') return true
+      if (!inv.nroRendicion) return estadoCierre === 'abiertas' // Sin rendición = mostrar en abiertas
+      const status = getRendicionStatus(inv.nroRendicion)
+      if (estadoCierre === 'abiertas') return status.isOpen
+      if (estadoCierre === 'cerradas') return !status.isOpen
       return true
     })
     // NOTA: Ya no filtramos por tipoOperacion aquí porque la API ya lo hace
@@ -1325,22 +1347,6 @@ export default function HomePage() {
     }
     return acc
   }, {} as Record<string, number>)
-
-  // Mapa para verificar si una caja/rendición está abierta o cerrada
-  const rendicionStatusMap = rendiciones.reduce((acc, rend) => {
-    acc[String(rend.NroRend)] = rend.CodEstado
-    return acc
-  }, {} as Record<string, string>)
-
-  // Helper para obtener el estado de una caja/rendición
-  const getRendicionStatus = (nroRendicion: string | undefined | null): { isOpen: boolean; label: string; color: string } => {
-    if (!nroRendicion) return { isOpen: true, label: '', color: '' }
-    const codEstado = rendicionStatusMap[String(nroRendicion)]
-    if (codEstado === '00') return { isOpen: true, label: '🟢', color: 'bg-green-100 text-green-800 border-green-300' }
-    if (codEstado === '01') return { isOpen: false, label: '🔴', color: 'bg-red-100 text-red-800 border-red-300' }
-    // Si no está en el mapa, asumimos que está cerrada o no disponible
-    return { isOpen: false, label: '⚪', color: 'bg-gray-100 text-gray-600 border-gray-300' }
-  }
 
   // Diseño limpio y profesional - sin animaciones infantiles
   const getThemeColors = () => {
