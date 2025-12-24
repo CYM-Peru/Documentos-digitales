@@ -1,0 +1,130 @@
+id,planillaId,dia,mes,anio,fechaGasto,motivo,origen,destino,montoViaje,montoDia,createdAt
+13,cmievordg000513vmenh07oue,,,,2025-11-13 00:00:00,Taxi Real Plaza - Hotel,,,9,0,2025-11-25 17:57:21.94
+14,cmievordg000513vmenh07oue,,,,2025-11-13 00:00:00,Taxi Hotel-aeropuerto,,,15,0,2025-11-25 17:57:21.94
+15,cmiexwbjk000813vmor9qulkc,,,,2025-11-12 00:00:00,Taxi aeropuerto Cusco a Hotel,,,15,0,2025-11-25 18:59:13.902
+16,cmiexwbjk000813vmor9qulkc,,,,2025-11-12 00:00:00,Taxi Hotel-Real Plaza Cusco,,,9,0,2025-11-25 18:59:13.902
+17,cmiexwbjk000813vmor9qulkc,,,,2025-11-12 00:00:00,Taxi Real Plaza Cusco - Hotel,,,9,0,2025-11-25 18:59:13.902
+18,cmiexwbjk000813vmor9qulkc,,,,2025-11-12 00:00:00,Taxi Hotel - Real Plaza Cusco,,,10,0,2025-11-25 18:59:13.902
+19,cmiey38fk0002ew5usqd4k1dr,,,,2075-11-14 00:00:00,Taxi Aeropuerto - Hotel Arequipa,,,25,0,2025-11-25 19:04:36.465
+20,cmiey38fk0002ew5usqd4k1dr,,,,2025-11-14 00:00:00,Taxi Hotel a C.C. Lam bra mani,,,12,0,2025-11-25 19:04:36.465
+21,cmiey38fk0002ew5usqd4k1dr,,,,2075-11-14 00:00:00,Taxi Lam bramani - CC Poron goche,,,8,0,2025-11-25 19:04:36.465
+22,cmiey47qd0005ew5u7801osm0,,,,2025-11-15 00:00:00,Taxi C.C. Poromgoche - Restaurante,,,18,0,2025-11-25 19:05:22.214
+23,cmiey47qd0005ew5u7801osm0,,,,2025-11-15 00:00:00,Taxi Hotel - C.C. Porongoche,,,15,0,2025-11-25 19:05:22.214
+24,cmiey47qd0005ew5u7801osm0,,,,2025-11-15 00:00:00,Taxi C.C. Poron gocha - Hotel,,,12,0,2025-11-25 19:05:22.214
+25,cmiey47qd0005ew5u7801osm0,,,,2025-11-16 00:00:00,Taxi Hotel - Aeropuerto Arequipa,,,20,0,2025-11-25 19:05:22.214
+26,cmif1f4b00002s0qg80j80kzj,,,,2025-11-20 00:00:00,Apoyo eventos Glow gert-Hotel Graune,Comas,Miraflores,40,0,2025-11-25 20:37:49.835
+27,cmif1f4b00002s0qg80j80kzj,,,,2025-11-21 00:00:00,y evento Glan Paget-Hotel Goume,Miraflores,Comas,39.4,0,2025-11-25 20:37:49.835
+28,cmif1h5t70005s0qg4mv70c1b,,,,2025-11-24 00:00:00,PASAJE TRASLADO DE OLO INTERNET,,OFICINA - MEGA PLAZA,11,0,2025-11-25 20:39:25.099
+29,cmif1o8v40008s0qglrd7cb2k,,,,2025-11-20 00:00:00,Riparación a laptop,,Wilson,9,0,2025-11-25 20:44:55.648
+30,cmif1o8v40008s0qglrd7cb2k,,,,2025-11-20 00:00:00,Mentenito Pe,,San Migul,12,0,2025-11-25 20:44:55.648
+31,cmif1o8v40008s0qglrd7cb2k,,,,2025-11-20 00:00:00,Reparación a laptop,,Ofeno,10,0,2025-11-25 20:44:55.648
+33,cmif1w1cc000es0qgj8lm0apl,,,,2025-11-22 00:00:00,movilidad Peerks,Atc,callbo,21,0,2025-11-25 20:50:59.148
+34,cmif216nq000hs0qgfrl16mh3,,,,2025-11-20 00:00:00,Depornito tiendas y Senelllar dinero,Anice,colonial,5,0,2025-11-25 20:54:59.318
+35,cmif216nq000hs0qgfrl16mh3,,,,2025-11-22 00:00:00,Para events.,cobnial - Breña,Doce,3,0,2025-11-25 20:54:59.318
+36,cmif216nq000hs0qgfrl16mh3,,,,2025-11-22 00:00:00,"Recopo de Mercadia Jana, qvonto Glow Projet.",Arice,Miraflores,25,0,2025-11-25 20:54:59.318
+37,cmif216nq000hs0qgfrl16mh3,,,,2025-11-24 00:00:00,Apoyo dopacho cliente rimode,Cento de Fiume,Ance,1.5,0,2025-11-25 20:54:59.318
+38,cmif2258z000ks0qgrgrzy5rb,,,,2025-11-22 00:00:00,Movilidad Glow Project,,Miraflores - Comas,41.5,0,2025-11-25 20:55:44.147
+39,cmif23c6n000ns0qg6gzwa9ei,,,,2025-11-18 00:00:00,Vuests Trenchor,,Dechsle - Ripley SIL,4,0,2025-11-25 20:56:39.791
+40,cmif23c6n000ns0qg6gzwa9ei,,,,2025-04-18 00:00:00,d,,Dechste - Ripley M.SUR,3,0,2025-11-25 20:56:39.791
+41,cmif23c6n000ns0qg6gzwa9ei,,,,2025-11-18 00:00:00,n,,Ripley Jockey,3,0,2025-11-25 20:56:39.791
+42,cmif23c6n000ns0qg6gzwa9ei,,,,2025-04-20 00:00:00,41,,Dechsle Carco,2,0,2025-11-25 20:56:39.791
+43,cmif23c6n000ns0qg6gzwa9ei,,,,2025-11-20 00:00:00,u,,Ripley S. Miguel,3,0,2025-11-25 20:56:39.791
+44,cmif2l50g000qs0qgmlch0lke,,,,2025-11-22 00:00:00,Evento Perles,Callao,,23,0,2025-11-25 21:10:30.305
+45,cmif2l50g000qs0qgmlch0lke,,,,2025-11-22 00:00:00,Manteniento,Plaza Nort,,12,0,2025-11-25 21:10:30.305
+46,cmif2l50g000qs0qgmlch0lke,,,,2025-11-23 00:00:00,Evento Perles,Domicilio,,25,0,2025-11-25 21:10:30.305
+47,cmif2lwul000ts0qgrcv2hb5i,,,,2025-11-21 00:00:00,Evento Glow,,Hicaplanes,13,0,2025-11-25 21:11:06.381
+48,cmif2lwul000ts0qgrcv2hb5i,,,,2025-11-25 00:00:00,Mantenimto,,+ San Migul,12,0,2025-11-25 21:11:06.381
+49,cmif2lwul000ts0qgrcv2hb5i,,,,2025-11-25 00:00:00,Evunto Glow,,Ομακο,5.5,0,2025-11-25 21:11:06.381
+50,cmif3rtss0012s0qg0hzmmzk8,,,,2025-11-19 00:00:00,Entrega des kits,Oficina,Miraflors,35,0,2025-11-25 21:43:41.98
+51,cmif3rtss0012s0qg0hzmmzk8,,,,2025-11-20 00:00:00,Entraga da kits,Miraflora,o Ficins,35,0,2025-11-25 21:43:41.98
+55,cmig1sisy0005ldu0hdjkz3k5,,,,2025-11-25 00:00:00,Deposito de tiendas y Dejar Carta Notarial,Anica,Colonial - Salaverry - Drica,8,0,2025-11-26 13:36:01.331
+56,cmig1sisy0005ldu0hdjkz3k5,,,,2025-11-25 00:00:00,Apoyo dopacho Garotas y Pampilli,Anica,Grau,1.5,0,2025-11-26 13:36:01.331
+57,cmig1sisy0005ldu0hdjkz3k5,,,,2025-11-25 00:00:00,Recego de Etiquetas Vencorp.,Grau,Pettit tuors - Arica,5,0,2025-11-26 13:36:01.331
+69,cmiov21ug0005h5oypxao2in6,,,,2025-12-02 00:00:00,Prueba,Oficina ,Santa Anita,5,0,2025-12-02 17:37:24.184
+70,cmiqiugfc0002sotax6i0b9ng,,,,2025-12-03 00:00:00,Recojo de cartas notariales,Arica,Arenales - arica,4,0,2025-12-03 21:31:06.791
+71,cmiqiugfc0002sotax6i0b9ng,,,,2025-12-03 00:00:00,Dejar pedido safa falabella y recojo de sellos,Arica,Centro civico,1.5,0,2025-12-03 21:31:06.791
+72,cmiqiugfc0002sotax6i0b9ng,,,,2025-12-03 00:00:00,Compra de filtro purificador y escalera de aluminio,Centeo civico,Malvinas - arica,3,0,2025-12-03 21:31:06.791
+78,cmirm13y70002ict75uq6ty01,,,,2025-11-24 00:00:00,Centre Retresa pe Kit be Oly,,tay estacion grav - Areopuerto,25,0,2025-12-04 15:48:02.24
+79,cmirm13y70002ict75uq6ty01,,,,2021-11-23 00:00:00,"""",,,25,0,2025-12-04 15:48:02.24
+80,cmirm1tlp0005ict7b0uod05j,,,,2025-11-25 00:00:00,Envio de impusora,,Wilson,13,0,2025-12-04 15:48:35.485
+81,cmirm1tlp0005ict7b0uod05j,,,,2025-11-25 00:00:00,Envio de impusoro,,Ofiana,1.5,0,2025-12-04 15:48:35.485
+82,cmirm2hnk0008ict797gmcf38,,,,2025-11-28 00:00:00,"Entrega de laptop
+Manteniuito",,T Jockey,23,0,2025-12-04 15:49:06.656
+83,cmirm2hnk0008ict797gmcf38,,,,2025-11-29 00:00:00,Entruge d laptop,,Mall sur,15,0,2025-12-04 15:49:06.656
+84,cmirmb3dc000bict7kaggw0ef,,,,2025-11-30 00:00:00,"Entiga de laptop
+Mantemento",,San Miguel,13,0,2025-12-04 15:55:48.049
+85,cmirmb3dc000bict7kaggw0ef,,,,2025-12-01 00:00:00,Recogu impusore Optime.,,Plaza Noite,12,0,2025-12-04 15:55:48.049
+86,cmirmb3dc000bict7kaggw0ef,,,,2025-12-04 00:00:00,"Recogu impusola ""ομανω",,Wilson,3.5,0,2025-12-04 15:55:48.049
+87,cmirmb3dc000bict7kaggw0ef,,,,2025-12-04 00:00:00,,,Ομεκο,12,0,2025-12-04 15:55:48.049
+88,cmirmu2ec0002x8jgk408ez40,,,,2025-11-27 00:00:00,Racojo de material Publicitaroo,,la victoria - Oficina,35,0,2025-12-04 16:10:33.252
+89,cmirmv42t0005x8jgf0sdkguh,,,,2025-11-27 00:00:00,Racojo de toldo y Plumas,,Shalom Av. Venezuela a la oficina,18,0,2025-12-04 16:11:22.086
+90,cmirmwbsf0008x8jgyb7r6ghc,,,,2025-11-26 00:00:00,Deposito de tiendas y letras,Dorica,colonial,5,0,2025-12-04 16:12:18.736
+91,cmirmwbsf0008x8jgyb7r6ghc,,,,2025-11-26 00:00:00,Apoyo despacho a client sdely,colonial,Ragdalene - Drive,4.5,0,2025-12-04 16:12:18.736
+92,cmirmwbsf0008x8jgyb7r6ghc,,,,2028-11-27 00:00:00,Apoyo de Recojo de calzado y,Calloo,Puente Nuevo,3.5,0,2025-12-04 16:12:18.736
+93,cmirmwbsf0008x8jgyb7r6ghc,,,,2025-12-04 00:00:00,de Documents Para contabilidad.,Puente Nuevo,Anice,3.5,0,2025-12-04 16:12:18.736
+94,cmirmwbsf0008x8jgyb7r6ghc,,,,2025-12-04 00:00:00,Recojo de Polos Evento Glow Progel,Dace,Gamarra - Anice,5,0,2025-12-04 16:12:18.736
+95,cmirmwvej000bx8jga4v00xxk,,,,2025-12-01 00:00:00,Apoyo despacho Ecommerce tiendes,,San Migust - cellso,10,0,2025-12-04 16:12:44.155
+96,cmirmwvej000bx8jga4v00xxk,,,,2025-12-02 00:00:00,Apoyo despacho Ecommerce,,San Miguel - calleo,3.5,0,2025-12-04 16:12:44.155
+97,cmirmwvej000bx8jga4v00xxk,,,,2025-12-04 00:00:00,Recojo de Etiquetas Ripley,,Anica - Breña - Price,4,0,2025-12-04 16:12:44.155
+98,cmirmwvej000bx8jga4v00xxk,,,,2025-12-04 00:00:00,copia de Planos piguel / Norte,,Arica - sem Marcos - Brice,2,0,2025-12-04 16:12:44.155
+134,cmj03sklj0002x554tnl4zp32,,,,2025-12-05 00:00:00,Compres de materiales para regalo VxM,,Centro de Lima - Oficina,22,22,2025-12-10 14:27:26.406
+143,cmj8oxb38000spzkzyeet0jn0,,,,2025-12-03 00:00:00,RECOJO DE DINERO ATOCONGO,,SAN JUAN DE MIRAFLORES,10,10,2025-12-16 14:41:08.708
+105,cmis2k99s0004dtm6klml8skm,,,,2025-12-04 00:00:00,Recojo de etiquetas y despacho cliente HyM,Colonial,Breña-magdalena,4,3,2025-12-04 23:30:49.455
+106,cmitfe6p00007dtm64o0psav5,,,,2025-12-05 00:00:00,Apoyo despacho clientes mayoristas,Plaza norte,Alfonso ugarte - arica,7.5,3,2025-12-05 22:17:47.364
+107,cmitfe6p00007dtm64o0psav5,,,,2025-12-05 00:00:00,Recojo de etiquetas Estilos y envio a chilca,Arica,Ate - mall sur - arica ,7.5,12,2025-12-05 22:17:47.364
+135,cmj0jgnua000876kwi4et2tre,,,,2025-12-04 00:00:00,Envío de mercadería (Polos mayoristas),La Casona de la Virreyna - Av. Abancay,Oficina principal Azaleia,12,12,2025-12-10 21:46:04.594
+136,cmj1f562q0004r82ls62t4c0h,,,,2025-12-11 00:00:00,Viaje,San luis,Oficina,25,25,2025-12-11 12:32:56.066
+141,cmj8ot741000mpzkznh017w8r,,,,2025-11-24 00:00:00,Recojo efectivo Atocongo ,,SAN JUAN DE Miraflores ,10,10,2025-12-16 14:37:56.929
+144,cmj90r0om0004gku45in62okn,,,,2025-11-25 00:00:00,Visita a clientes mayoristas ,Oficina Principal,Centro de Lima,4,3,2025-12-16 20:12:10.678
+145,cmj90r0om0004gku45in62okn,,,,2025-11-26 00:00:00,Visita a clientes mayoristas y tiendas Azaleia y Olympikus,Oficina Principal,Independencia- Plaza Norte ,4,5,2025-12-16 20:12:10.678
+146,cmj90r0om0004gku45in62okn,,,,2025-12-01 00:00:00,Visita a clientes mayoristas ,Oficina Principal ,La Victoria - Polvos Azules,4,3,2025-12-16 20:12:10.678
+147,cmj90r0om0004gku45in62okn,,,,2025-12-16 00:00:00,Visita cliente mayorista,Oficina Principal ,La Victoria - Centro de Lima,4,5,2025-12-16 20:12:10.678
+148,cmja2bv6c0002yrktb4e6rnij,,,,2025-12-03 00:00:00,VISITA A CLIENTE - SDELY - HM CALZADOS,Oficina Principal,Jesus Maria - Magdalena - Surco,12.6666666666667,8,2025-12-17 13:44:09.108
+149,cmja2bv6c0002yrktb4e6rnij,,,,2025-12-04 00:00:00,Visita a cliente/prospecto - BRILAZ (muestras ),Oficina Principal,Barranco - Oficina Principal ,12.6666666666667,10,2025-12-17 13:44:09.108
+150,cmja2bv6c0002yrktb4e6rnij,,,,2025-12-11 00:00:00,Visita a cliente/prospecto (2 maletas de muetras) Mika ,Oficina Principal ,Breña - Oficina Principal ,12.6666666666667,20,2025-12-17 13:44:09.108
+151,cmja2ngr80005yrktq4lhsl51,,,,2025-12-12 00:00:00,Visita a clientes y entrega de presentes HM CALZADOS,Oficina Principal ,"Magdalena ,  Surco",2.66666666666667,5,2025-12-17 13:53:10.292
+152,cmja2ngr80005yrktq4lhsl51,,,,2025-12-15 00:00:00,"Visita a cliente, entrega de presente GAROTAS",Oficina Principal,Centro de Lima,2.66666666666667,1.5,2025-12-17 13:53:10.292
+153,cmja2ngr80005yrktq4lhsl51,,,,2025-12-16 00:00:00,Visita a prospecto Declathon - Sr. Robinson ,Oficina Principal,Centro de Lima,2.66666666666667,1.5,2025-12-17 13:53:10.292
+154,cmja5a0jr000lyrktnh3prn6u,,,,2025-11-27 00:00:00,Pasaje autos,Chancay,Huaral,4.39285714285714,3,2025-12-17 15:06:41.607
+155,cmja5a0jr000lyrktnh3prn6u,,,,2025-11-27 00:00:00,Pasaje auto,Huaral,Cliente Estilos,4.39285714285714,3,2025-12-17 15:06:41.607
+156,cmja5a0jr000lyrktnh3prn6u,,,,2025-11-27 00:00:00,Taxi a cliente,Estilos ,De La Cruz Geronimo Nina,4.39285714285714,2,2025-12-17 15:06:41.607
+157,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi a agencia,San juan de miraflores,Agencia Atocongo SJM,4.39285714285714,10,2025-12-17 15:06:41.607
+158,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi,Agencia Ica ,Cliente Pamela Moda,4.39285714285714,5,2025-12-17 15:06:41.607
+159,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi a cliente Estilos,Cliente Pamela Moda ,Plaza del Sol Ica,4.39285714285714,5,2025-12-17 15:06:41.607
+160,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi con muestras,Plaza  del Sol Ica,Agencia de viajes Pisco,4.39285714285714,5,2025-12-17 15:06:41.607
+161,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Visita cliente,Agencia Pisco,Cliente Pazzos By Mary,4.39285714285714,3,2025-12-17 15:06:41.607
+162,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Visita cliente,Cliente Pazzos by Mary,Mega plaza Pisco,4.39285714285714,3,2025-12-17 15:06:41.607
+163,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi c Niestras,Megaplaza Pisco,Agennciab chincha,4.39285714285714,3,2025-12-17 15:06:41.607
+164,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Viaje,Agencia Chincha,Prospecto cliente Cueros Chincha,4.39285714285714,3,2025-12-17 15:06:41.607
+138,cmj1ubryy0010r82lh1jh4wl6,,,,2025-12-11 00:00:00,Apoyo despacho clientes,Colonial,La victoria-arica,4.25,3.5,2025-12-11 19:37:58.618
+139,cmj1ynr7f0015r82lddwkdymb,,,,2025-12-11 00:00:00,Recojo de carta fianza y dejarlo en oficina del inmueble,Arica,San isidro - larco mar - arica ,15.2,15.2,2025-12-11 21:39:15.963
+140,cmj357uqs0002al00ornllf5e,,,,2025-12-12 00:00:00,Dejar documento empresas yape y apoyo ecommerce,Arica,San miguel-la molina-jockey-mall sur,12,12,2025-12-12 17:30:37.539
+142,cmj8ow15i000ppzkzhih393hb,,,,2025-12-02 00:00:00,Recojo etiquetas Ripley.,Cercado de lima,Callao,9,9,2025-12-16 14:40:09.174
+171,cmjag7d69000eyf8fbqjru0vz,,,,2025-12-11 00:00:00,Visita tda pucallpa,Oficina,Aeropuerto,44.48,0,2025-12-17 20:58:09.562
+191,cmjhp9f400002cj3kwvyjbd70,,,,2025-12-22 00:00:00,RECOJO DE ETIQUETAS RIPLEY - INDRIVER,CALLAO,OFICINA ARICA,15,15,2025-12-22 22:00:29.375
+104,cmis2k99s0004dtm6klml8skm,,,,2025-12-04 00:00:00,Deposito tienda atocongo,Arica,Colonial (taxi),4,5,2025-12-04 23:30:49.455
+168,cmjafodbx0008yf8fpzxz5f8k,,,,2025-12-16 00:00:00,Estudio de mercado - Visita a Tiendas,Oficina Principal,Independencia- Plaza Norte,7.5,5,2025-12-17 19:57:47.516
+169,cmjafodbx0008yf8fpzxz5f8k,,,,2025-12-17 00:00:00,Visita a cliente - Gestión de cobranzas y recojo de letras,Oficina Principal ,Puente Piedra ,7.5,10,2025-12-17 19:57:47.516
+172,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-11 00:00:00,Visita tda Pucallpa,Aeropuerto pucallpa,Restaurante,11,18,2025-12-17 21:30:47.761
+173,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-11 00:00:00,Visita tda Pucallpa,Restaurante,Hotel sol de oriente,11,20,2025-12-17 21:30:47.761
+174,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-11 00:00:00,Visita tda Pucallpa,Hotel sol de oriente,Real plaza pucallpa,11,10,2025-12-17 21:30:47.761
+175,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-11 00:00:00,Visita tda Pucallpa,Real plaza pucallpa,Tienda por el centro,11,5,2025-12-17 21:30:47.761
+176,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-11 00:00:00,Visita tda Pucallpa,Tienda del centro,Open plaza,11,10,2025-12-17 21:30:47.761
+177,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-12 00:00:00,Visita tda Pucallpa,Open plaza,Real plaza,11,5,2025-12-17 21:30:47.761
+178,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-12 00:00:00,Visita tda Pucallpa,Real plaza ,Hotel ,11,10,2025-12-17 21:30:47.761
+179,cmjaizz2o0002g7h5i6xrgfj5,,,,2025-12-12 00:00:00,Visita tda Pucallpa,Hotel,Aeropuerto pucallpa,11,10,2025-12-17 21:30:47.761
+165,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi ,Cliente Cueros,Cliente Estilos,4.39285714285714,3.5,2025-12-17 15:06:41.607
+166,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi Agencia,Cliente Estilos,Agencia a Lima,4.39285714285714,3,2025-12-17 15:06:41.607
+167,cmja5a0jr000lyrktnh3prn6u,,,,2025-12-05 00:00:00,Taxi a agencia,Agencia Atocongo ,A San Juan de Miraflores,4.39285714285714,10,2025-12-17 15:06:41.607
+137,cmj1ubryy0010r82lh1jh4wl6,,,,2025-12-11 00:00:00,"Deposito de tiendas, dejar letras y deposito de cheques",Arica,Colonial(taxi),4.25,5,2025-12-11 19:37:58.618
+180,cmjc02dto000cg2lbmhtl48fk,,,,2025-12-18 00:00:00,compras bebidas para brindis oficina principal ida,Of. Principal,Tottus Colonial,6.5,1,2025-12-18 22:16:19.837
+181,cmjc02dto000cg2lbmhtl48fk,,,,2025-12-18 00:00:00,compras bebidas para brindis oficina principal retorno,Tottus Colonial,Of. Principal,6.5,6,2025-12-18 22:16:19.837
+182,cmjc02dto000cg2lbmhtl48fk,,,,2025-12-18 00:00:00,compra de bocaditos para brindis oficina principal,Pasteleria San Isidro,Of Principal,6.5,12.5,2025-12-18 22:16:19.837
+185,cmjd6mbcr001rg2lbhkbjr9if,,,,2025-12-05 00:00:00,compras centro de lima navidad,oficina principal arica,centro,20,14,2025-12-19 18:07:33.628
+186,cmjd6mbcr001rg2lbhkbjr9if,,,,2025-12-10 00:00:00,compras centro de lima navidad recojo bolsas,oficina principal arica,centro,20,26,2025-12-19 18:07:33.628
+184,cmjd6bo5j001og2lbr7ljtsdn,,,,2025-12-17 00:00:00,compras presentes piura,tienda real plaza piura,mercado,24,24,2025-12-19 17:59:16.999
+183,cmjd69o18001lg2lbslcdnvmc,,,,2025-12-10 00:00:00,movilidad compras presentes cusco,tienda cusco,centro cusco ,36,36,2025-12-19 17:57:43.532
+187,cmjd99xlr0002u4muz2rm75m4,,,,2025-12-19 00:00:00,Desayuno en ruta - Lima - Barranca ,Lima,Barranca,10,10,2025-12-19 19:21:54.783
+188,cmjd99xlr0002u4muz2rm75m4,,,,2025-12-18 00:00:00,Cena en ruta Barranca - Lima,Barranca,Lima,10,10,2025-12-19 19:21:54.783
+189,cmjd99xlr0002u4muz2rm75m4,,,,2025-12-18 00:00:00,Taxi terminal Barranca - Hotel Vilela (2 maletas),Terminal Barranca,HOTEL Vilela,10,10,2025-12-19 19:21:54.783
+190,cmjd99xlr0002u4muz2rm75m4,,,,2025-12-18 00:00:00,Taxi Hotel - Terminal Barranca (2 maletas),Hotel vilela,Terminal Barranca ,10,10,2025-12-19 19:21:54.783

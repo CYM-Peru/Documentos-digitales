@@ -1,0 +1,739 @@
+id,organizationId,awsAccessKey,awsSecretKey,awsRegion,googleServiceAccount,googleSheetsId,googleDriveFolderId,n8nWebhookUrl,ocrProvider,emailNotifications,webhookNotifications,createdAt,updatedAt,geminiApiKey,geminiModel,geminiPrompt,sunatClientId,sunatClientSecret,sunatEnabled,sunatRuc,sqlServerDatabase,sqlServerEnabled,sqlServerEncrypt,sqlServerHost,sqlServerPassword,sqlServerPort,sqlServerTrustCert,sqlServerUser,alertAutoEmailProvider,alertEmailTemplate,alertMissingXmlDays,alertNotifyUsers,alertSlackWebhook,alertTeamsWebhook,alertsEnabled,emailAutoProcess,emailCheckInterval,emailDeleteAfter,emailFolder,emailFromBlacklist,emailFromWhitelist,emailHost,emailMarkAsRead,emailMonitorEnabled,emailMonitorType,emailOauth2AccessToken,emailOauth2ClientId,emailOauth2ClientSecret,emailOauth2RefreshToken,emailOauth2TokenExpiry,emailPassword,emailPort,emailSubjectKeywords,emailUseSsl,emailUsername,providerEmailEnabled,providerEmailFrom,providerEmailSmtpHost,providerEmailSmtpPass,providerEmailSmtpPort,providerEmailSmtpSsl,providerEmailSmtpUser,providerEmailSubject,sunatAutoCheckEnabled,sunatAutoCheckInterval,sunatAutoCheckLastRun,sunatCheckDaysBack,whatsappApiKey,whatsappApiUrl,whatsappApproverNumbers,whatsappConnected,whatsappConnectedAt,whatsappEnabled,whatsappInstanceId,whatsappInstanceName,whatsappNotifyPlanillaApproved,whatsappNotifyPlanillaCreated,whatsappNotifyPlanillaRejected,whatsappPhoneNumber,whatsappQrCode
+cmhic2aib0004oon1b2k1qlmy,cmhic2af80000oon1ejawz3oh,AKIATVHMUAJNJFHVLR44,U2FsdGVkX19YOovJcbesMRYUMDQaIpWB5voyGGm87phzvUMhBD2rKl7ha/mB4BVfY8DNde1YX8byU+yLhNVeug==,us-east-1,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,11-jRGmc1VkS7vLjyWBIESRbLAZRDRbQVrQQOND5fNhc,,,GEMINI_VISION,t,f,2025-11-02 23:19:23.315,2025-12-10 17:56:36.855,U2FsdGVkX1+pK4T/rsbyy/X3/dttZOGqUKAKQsSQoqFyyWc4HtBb4DYL7M5ZwiNklW35vXFgle+88AEg9ci03A==,gemini-2.0-flash-exp,"{
+  ""systemRole"": ""Eres un experto en análisis de comprobantes electrónicos peruanos emitidos bajo el Sistema de Emisión Electrónica (SEE) de SUNAT. Tu tarea es extraer datos estructurados con precisión total."",
+  
+  ""instructions"": {
+    ""general"": ""Analiza la imagen del comprobante electrónico peruano (SUNAT) y extrae EXACTAMENTE los datos estructurados siguiendo todas las reglas de validación establecidas."",
+    
+    ""documentIdentification"": {
+      ""title"": ""IDENTIFICACIÓN DEL TIPO DE DOCUMENTO"",
+      ""description"": ""Identifica el tipo de comprobante según SUNAT Catálogo 01"",
+      ""documentTypes"": {
+        ""01"": ""FACTURA ELECTRÓNICA"",
+        ""03"": ""BOLETA DE VENTA ELECTRÓNICA"",
+        ""07"": ""NOTA DE CRÉDITO ELECTRÓNICA"",
+        ""08"": ""NOTA DE DÉBITO ELECTRÓNICA"",
+        ""09"": ""GUÍA DE REMISIÓN ELECTRÓNICA"",
+        ""12"": ""RECIBO POR HONORARIOS ELECTRÓNICO"",
+        ""20"": ""COMPROBANTE DE RETENCIÓN ELECTRÓNICO"",
+        ""40"": ""COMPROBANTE DE PERCEPCIÓN ELECTRÓNICO""
+      },
+      ""seriesPatterns"": {
+        ""factura"": ""F### (donde # es un dígito)"",
+        ""boleta"": ""B### (donde # es un dígito)"",
+        ""notaCredito"": ""Puede iniciar con FC## o BC##"",
+        ""notaDebito"": ""Puede iniciar con FD## o BD##""
+      },
+      ""hints"": [
+        ""Busca el título del documento en la parte superior del comprobante"",
+        ""Verifica la serie para confirmar el tipo de documento"",
+        ""Las facturas son emitidas a empresas con RUC"",
+        ""Las boletas son emitidas a consumidores finales""
+      ]
+    },
+    
+    ""extractionRules"": {
+      ""title"": ""REGLAS DE EXTRACCIÓN Y VALIDACIÓN"",
+      
+      ""emisorData"": {
+        ""description"": ""DATOS DEL EMISOR (quien emite el comprobante)"",
+        ""fields"": {
+          ""rucEmisor"": {
+            ""description"": ""RUC del emisor"",
+            ""format"": ""11 dígitos numéricos"",
+            ""regex"": ""^[0-9]{11}$"",
+            ""examples"": [""20123456789"", ""10456789123""],
+            ""hints"": [
+              ""Si el RUC inicia con 10: persona natural"",
+              ""Si el RUC inicia con 20: persona jurídica/empresa"",
+              ""Busca en la parte superior del comprobante"",
+              ""Generalmente aparece después de 'RUC:' o 'R.U.C.:'""
+            ]
+          },
+          ""razonSocialEmisor"": {
+            ""description"": ""Razón social o nombre completo del emisor"",
+            ""hints"": [
+              ""Busca después del RUC o en la cabecera del comprobante"",
+              ""Puede incluir abreviaturas como S.A.C., S.R.L., E.I.R.L."",
+              ""Para personas naturales, busca el nombre completo""
+            ]
+          },
+          ""nombreComercialEmisor"": {
+            ""description"": ""Nombre comercial del emisor (si existe)"",
+            ""hints"": [
+              ""Puede ser diferente a la razón social"",
+              ""Generalmente aparece destacado en la parte superior""
+            ]
+          },
+          ""domicilioFiscalEmisor"": {
+            ""description"": ""Dirección fiscal completa del emisor"",
+            ""hints"": [
+              ""Busca la dirección completa incluyendo distrito, provincia, departamento"",
+              ""Puede estar etiquetada como 'Dirección:', 'Domicilio Fiscal:'"",
+              ""Debe incluir referencia al UBIGEO si está presente""
+            ]
+          }
+        }
+      },
+      
+      ""receptorData"": {
+        ""description"": ""DATOS DEL RECEPTOR (cliente que recibe el comprobante)"",
+        ""fields"": {
+          ""tipoDocumentoReceptor"": {
+            ""description"": ""Tipo de documento de identidad del receptor"",
+            ""catalog"": ""SUNAT Catálogo 06"",
+            ""values"": {
+              ""1"": ""DNI - Documento Nacional de Identidad"",
+              ""4"": ""CARNET DE EXTRANJERÍA"",
+              ""6"": ""RUC - Registro Único de Contribuyentes"",
+              ""7"": ""PASAPORTE"",
+              ""A"": ""CÉDULA DIPLOMÁTICA DE IDENTIDAD""
+            },
+            ""hints"": [
+              ""Si el receptor es empresa: usar código '6' (RUC)"",
+              ""Si el receptor es persona natural peruana: usar código '1' (DNI)"",
+              ""Si no se especifica, inferir del formato del número""
+            ]
+          },
+          ""numeroDocumentoReceptor"": {
+            ""description"": ""Número de documento del receptor"",
+            ""formats"": {
+              ""ruc"": ""11 dígitos numéricos (^[0-9]{11}$)"",
+              ""dni"": ""8 dígitos numéricos (^[0-9]{8}$)"",
+              ""ce"": ""9 o 12 caracteres alfanuméricos"",
+              ""pasaporte"": ""Hasta 12 caracteres alfanuméricos""
+            },
+            ""hints"": [
+              ""Para facturas: generalmente es RUC (11 dígitos)"",
+              ""Para boletas: puede ser DNI (8 dígitos) o vacío"",
+              ""Si no existe, usar null""
+            ]
+          },
+          ""razonSocialReceptor"": {
+            ""description"": ""Nombre o razón social del receptor/cliente"",
+            ""hints"": [
+              ""Busca después de 'Señor(es):', 'Cliente:', 'Razón Social:'"",
+              ""Para facturas: razón social de la empresa"",
+              ""Para boletas: nombre del consumidor o 'CLIENTES VARIOS'""
+            ]
+          },
+          ""direccionReceptor"": {
+            ""description"": ""Dirección del cliente (si existe)"",
+            ""optional"": true
+          }
+        }
+      },
+      
+      ""comprobanteData"": {
+        ""description"": ""DATOS DEL COMPROBANTE"",
+        ""fields"": {
+          ""serieNumero"": {
+            ""description"": ""Serie y número correlativo del comprobante"",
+            ""format"": ""Serie-Número (Ej: F001-00012345, B092-00272073)"",
+            ""regex"": ""^[A-Z]{1,4}[0-9]{2,3}-[0-9]{1,8}$"",
+            ""examples"": [""F001-00012345"", ""B092-00272073"", ""FC01-00000123"", ""E001-1""],
+            ""hints"": [
+              ""Generalmente en la parte superior derecha"",
+              ""La serie indica el tipo: F=Factura, B=Boleta, FC=Nota Crédito Factura, etc"",
+              ""El número debe tener como mínimo 1 dígito""
+            ],
+            ""validation"": ""Debe coincidir con el tipo de documento identificado""
+          },
+          ""fechaEmision"": {
+            ""description"": ""Fecha de emisión del comprobante"",
+            ""format"": ""YYYY-MM-DD"",
+            ""examples"": [""2025-11-02"", ""2024-12-25""],
+            ""hints"": [
+              ""Busca 'Fecha de Emisión:', 'Fecha:', 'F. Emisión:'"",
+              ""Convierte el formato DD/MM/YYYY o DD-MM-YYYY a YYYY-MM-DD"",
+              ""Si solo tiene 2 dígitos de año, asume 20XX""
+            ]
+          },
+          ""horaEmision"": {
+            ""description"": ""Hora de emisión (si existe)"",
+            ""format"": ""HH:MM:SS"",
+            ""optional"": true
+          },
+          ""fechaVencimiento"": {
+            ""description"": ""Fecha de vencimiento del pago (si existe)"",
+            ""format"": ""YYYY-MM-DD"",
+            ""optional"": true
+          }
+        }
+      },
+      
+      ""montosYTotales"": {
+        ""description"": ""MONTOS Y TOTALES"",
+        ""importantNote"": ""Los montos deben ser números decimales (Float), NO strings. Usa punto (.) como separador decimal."",
+        ""fields"": {
+          ""moneda"": {
+            ""description"": ""Código de moneda según ISO 4217"",
+            ""values"": {
+              ""PEN"": ""Soles Peruanos (busca: 'S/', 'PEN', 'SOLES', 'NUEVOS SOLES')"",
+              ""USD"": ""Dólares Americanos (busca: '$', 'USD', 'DÓLARES', 'DOLARES')"",
+              ""EUR"": ""Euros (busca: '€', 'EUR', 'EUROS')""
+            },
+            ""default"": ""PEN"",
+            ""hints"": [
+              ""Generalmente aparece antes de los montos"",
+              ""Si no se especifica, asumir PEN (Soles)""
+            ]
+          },
+          ""tipoOperacion"": {
+            ""description"": ""Tipo de operación según catálogo SUNAT 51"",
+            ""catalog"": ""SUNAT Catálogo 51"",
+            ""commonValues"": {
+              ""0101"": ""Venta Interna"",
+              ""0200"": ""Exportación"",
+              ""0401"": ""Venta Interna - Anticipos"",
+              ""1001"": ""Operación Sujeta a Detracción"",
+              ""1002"": ""Operación Sujeta a Detracción - Recursos Hidrobiológicos"",
+              ""1003"": ""Operación Sujeta a Detracción - Servicios de Transporte Pasajeros"",
+              ""1004"": ""Operación Sujeta a Detracción - Servicios de Transporte Carga"",
+              ""2001"": ""Operación Sujeta a Percepción""
+            },
+            ""optional"": true,
+            ""hints"": [""Si no se especifica, usar null o inferir '0101' para ventas normales""]
+          },
+          ""subtotal"": {
+            ""description"": ""Valor de venta o base imponible (SIN IGV)"",
+            ""type"": ""float"",
+            ""searchLabels"": [
+              ""OP GRAVADA"",
+              ""OP. GRAVADA"",
+              ""OPERACIONES GRAVADAS"",
+              ""BASE IMPONIBLE"",
+              ""VALOR VENTA"",
+              ""SUB TOTAL"",
+              ""GRAVADA""
+            ],
+            ""hints"": [
+              ""Es el monto ANTES de aplicar el IGV"",
+              ""En facturas con IGV: subtotal = totalAmount / 1.18"",
+              ""Verificar que subtotal + igvMonto ≈ totalAmount""
+            ],
+            ""calculation"": ""Si no está explícito: subtotal = totalAmount - igvMonto""
+          },
+          ""opExonerada"": {
+            ""description"": ""Operaciones exoneradas del IGV (si existen)"",
+            ""type"": ""float"",
+            ""optional"": true,
+            ""searchLabels"": [""OP EXONERADA"", ""OP. EXONERADA"", ""EXONERADA""],
+            ""afectacionIGV"": ""20""
+          },
+          ""opInafecta"": {
+            ""description"": ""Operaciones inafectas del IGV (si existen)"",
+            ""type"": ""float"",
+            ""optional"": true,
+            ""searchLabels"": [""OP INAFECTA"", ""OP. INAFECTA"", ""INAFECTA""],
+            ""afectacionIGV"": ""30""
+          },
+          ""opGratuita"": {
+            ""description"": ""Operaciones gratuitas (transferencias gratuitas)"",
+            ""type"": ""float"",
+            ""optional"": true,
+            ""searchLabels"": [""OP GRATUITA"", ""GRATUITA"", ""TRANSFERENCIA GRATUITA""]
+          },
+          ""descuentosGlobales"": {
+            ""description"": ""Descuentos globales aplicados (si existen)"",
+            ""type"": ""float"",
+            ""optional"": true,
+            ""searchLabels"": [""DESCUENTO"", ""DCTO."", ""DESC. GLOBAL""]
+          },
+          ""igvTasa"": {
+            ""description"": ""Tasa del IGV aplicada"",
+            ""type"": ""float"",
+            ""commonValues"": {
+              ""18.0"": ""Tasa estándar del IGV (16% IGV + 2% IPM)"",
+              ""10.0"": ""Tasa reducida para operaciones en Amazonía""
+            },
+            ""default"": 18.0,
+            ""calculation"": ""Si no está explícita: igvTasa = (igvMonto / subtotal) * 100"",
+            ""hints"": [
+              ""La tasa estándar en Perú es 18%"",
+              ""Puede ser diferente para zonas especiales (Ej: Amazonía 10%)"",
+              ""Redondear a 1 decimal""
+            ]
+          },
+          ""igvMonto"": {
+            ""description"": ""Monto del IGV en moneda del comprobante"",
+            ""type"": ""float"",
+            ""searchLabels"": [
+              ""I.G.V."",
+              ""IGV"",
+              ""IGV 18%"",
+              ""IMPUESTO"",
+              ""I.G.V. 18%""
+            ],
+            ""calculation"": ""Si no está explícito: igvMonto = subtotal * (igvTasa / 100)"",
+            ""hints"": [
+              ""Es el monto del impuesto, NO el porcentaje"",
+              ""Debe ser aproximadamente el 18% del subtotal (si tasa es 18%)"",
+              ""Verificar que (subtotal * 0.18) ≈ igvMonto""
+            ]
+          },
+          ""otrosTributos"": {
+            ""description"": ""Otros tributos e impuestos (ISC, IVAP, ICBPER, etc)"",
+            ""type"": ""object"",
+            ""optional"": true,
+            ""fields"": {
+              ""isc"": {
+                ""description"": ""Impuesto Selectivo al Consumo"",
+                ""type"": ""float"",
+                ""catalogCode"": ""02""
+              },
+              ""icbper"": {
+                ""description"": ""Impuesto al Consumo de Bolsas Plásticas"",
+                ""type"": ""float"",
+                ""catalogCode"": ""04"",
+                ""hints"": [""S/ 0.50 por bolsa plástica desde 2019""]
+              },
+              ""ivap"": {
+                ""description"": ""Impuesto a la Venta de Arroz Pilado"",
+                ""type"": ""float"",
+                ""catalogCode"": ""03""
+              }
+            }
+          },
+          ""importeTotal"": {
+            ""description"": ""IMPORTE TOTAL o TOTAL A PAGAR (incluye todos los impuestos)"",
+            ""type"": ""float"",
+            ""searchLabels"": [
+              ""IMPORTE TOTAL"",
+              ""TOTAL A PAGAR"",
+              ""TOTAL S/"",
+              ""TOTAL"",
+              ""MONTO TOTAL""
+            ],
+            ""validation"": ""subtotal + igvMonto + otrosTributos ≈ importeTotal"",
+            ""hints"": [
+              ""Es el monto final que paga el cliente"",
+              ""Incluye IGV y otros tributos"",
+              ""NO uses 'TOTAL' si hay otros totales parciales (subtotales)"",
+              ""Busca el monto más destacado o en negrita al final del comprobante""
+            ]
+          },
+          ""montoEnLetras"": {
+            ""description"": ""Monto total en letras/palabras"",
+            ""type"": ""string"",
+            ""optional"": true,
+            ""hints"": [""Busca 'SON:', 'MONTO EN LETRAS:', etiquetas similares""]
+          }
+        }
+      },
+      
+      ""documentosRelacionados"": {
+        ""description"": ""DOCUMENTOS RELACIONADOS (para Notas de Crédito/Débito)"",
+        ""optional"": true,
+        ""applicableTo"": [""07"", ""08""],
+        ""fields"": {
+          ""tipoDocumentoRelacionado"": {
+            ""description"": ""Tipo del documento que se modifica"",
+            ""catalog"": ""SUNAT Catálogo 01"",
+            ""examples"": [""01"", ""03""]
+          },
+          ""serieNumeroRelacionado"": {
+            ""description"": ""Serie-Número del documento modificado"",
+            ""format"": ""Serie-Número"",
+            ""examples"": [""F001-00012345"", ""B092-00272073""]
+          },
+          ""motivoNota"": {
+            ""description"": ""Motivo de emisión de la nota"",
+            ""notaCreditoCatalog"": {
+              ""01"": ""Anulación de la operación"",
+              ""02"": ""Anulación por error en el RUC"",
+              ""03"": ""Corrección por error en la descripción"",
+              ""04"": ""Descuento global"",
+              ""05"": ""Descuento por ítem"",
+              ""06"": ""Devolución total"",
+              ""07"": ""Devolución por ítem"",
+              ""08"": ""Bonificación"",
+              ""09"": ""Disminución en el valor"",
+              ""10"": ""Otros conceptos""
+            },
+            ""notaDebitoCatalog"": {
+              ""01"": ""Intereses por mora"",
+              ""02"": ""Aumento en el valor"",
+              ""03"": ""Penalidades/ otros conceptos""
+            }
+          }
+        }
+      },
+      
+      ""detalleItems"": {
+        ""description"": ""DETALLE DE ÍTEMS/PRODUCTOS (opcional pero recomendado)"",
+        ""type"": ""array"",
+        ""optional"": true,
+        ""itemStructure"": {
+          ""cantidad"": ""Cantidad del producto/servicio"",
+          ""unidadMedida"": ""Código de unidad de medida (KGM, NIU, ZZ, etc)"",
+          ""codigoProducto"": ""Código interno del producto"",
+          ""descripcion"": ""Descripción del producto/servicio"",
+          ""valorUnitario"": ""Precio unitario sin IGV"",
+          ""precioVentaUnitario"": ""Precio unitario con IGV"",
+          ""valorVenta"": ""Subtotal del ítem sin IGV"",
+          ""igvItem"": ""IGV del ítem"",
+          ""totalItem"": ""Total del ítem con IGV"",
+          ""tipoAfectacionIGV"": ""Código de afectación según catálogo 07""
+        },
+        ""hints"": [
+          ""Generalmente en una tabla en el centro del comprobante"",
+          ""Las columnas típicas son: CANT, U.M., DESCRIPCIÓN, P.UNIT, TOTAL""
+        ]
+      },
+      
+      ""informacionAdicional"": {
+        ""description"": ""INFORMACIÓN ADICIONAL"",
+        ""optional"": true,
+        ""fields"": {
+          ""ordenCompra"": ""Número de orden de compra"",
+          ""guiaRemision"": ""Número de guía de remisión"",
+          ""condicionesPago"": ""Condiciones de pago (Contado, Crédito)"",
+          ""cuentaBancaria"": ""Cuenta bancaria para depósito"",
+          ""detraccion"": {
+            ""codigo"": ""Código de detracción (catálogo 54)"",
+            ""porcentaje"": ""Porcentaje de detracción"",
+            ""monto"": ""Monto de detracción"",
+            ""cuentaBN"": ""Cuenta del Banco de la Nación""
+          },
+          ""placaVehiculo"": ""Placa de vehículo (para servicios de transporte)"",
+          ""observaciones"": ""Observaciones o notas adicionales""
+        }
+      },
+      
+      ""codigoQR"": {
+        ""description"": ""VALIDACIÓN DEL CÓDIGO QR (si existe)"",
+        ""mandatory"": ""Obligatorio desde enero 2020 en SEE-Contribuyente"",
+        ""format"": ""QR code bidimensional que contiene datos clave del comprobante"",
+        ""dataStructure"": {
+          ""rucEmisor"": ""RUC del emisor (11 dígitos)"",
+          ""tipoComprobante"": ""Código del tipo de comprobante (01, 03, etc)"",
+          ""serie"": ""Serie del comprobante"",
+          ""numero"": ""Número correlativo"",
+          ""fechaEmision"": ""Fecha de emisión en formato DD/MM/YYYY"",
+          ""igvMonto"": ""Monto del IGV"",
+          ""importeTotal"": ""Importe total del comprobante"",
+          ""tipoDocumentoReceptor"": ""Tipo doc del receptor"",
+          ""numeroDocumentoReceptor"": ""Número doc del receptor""
+        },
+        ""validation"": [
+          ""Los datos del QR deben coincidir con los datos visuales del comprobante"",
+          ""El QR permite verificar autenticidad en portal SUNAT"",
+          ""URL típica del QR: https://www.sunat.gob.pe/... o enlace al OSE""
+        ],
+        ""extraction"": ""Si hay código QR visible, intenta extraer y validar estos datos"",
+        ""exemptions"": [
+          ""No es obligatorio en SEE-SOL (emitidos desde web SUNAT)"",
+          ""No es obligatorio en SEE-SFS (Facturador SUNAT)""
+        ]
+      },
+      
+      ""estadoValidacion"": {
+        ""description"": ""ESTADO DE VALIDACIÓN SUNAT"",
+        ""optional"": true,
+        ""states"": {
+          ""ACEPTADO"": ""Comprobante válido según SUNAT/OSE"",
+          ""ACEPTADO_CON_OBSERVACION"": ""Válido pero con datos observados"",
+          ""RECHAZADO"": ""Comprobante sin validez tributaria""
+        },
+        ""hints"": [
+          ""Puede aparecer una leyenda 'Representación impresa de la Factura Electrónica'"",
+          ""Si hay CDR (Constancia de Recepción), indica estado"",
+          ""Si no se ve el estado, usar null""
+        ]
+      }
+    },
+    
+    ""validations"": {
+      ""title"": ""VALIDACIONES Y CONSISTENCIA"",
+      ""checks"": [
+        {
+          ""name"": ""Validación de cálculos - Suma total"",
+          ""formula"": ""subtotal + igvMonto + otrosTributos ≈ importeTotal"",
+          ""tolerance"": ""±0.05"",
+          ""action"": ""Si no cumple, revisar nuevamente los montos""
+        },
+        {
+          ""name"": ""Validación de cálculos - IGV"",
+          ""formula"": ""(subtotal * igvTasa / 100) ≈ igvMonto"",
+          ""tolerance"": ""±0.05"",
+          ""action"": ""Si no cumple, recalcular igvTasa o igvMonto""
+        },
+        {
+          ""name"": ""Validación de formatos - RUC"",
+          ""rule"": ""Exactamente 11 dígitos numéricos"",
+          ""regex"": ""^[0-9]{11}$"",
+          ""examples"": [""20123456789"", ""10456789123""]
+        },
+        {
+          ""name"": ""Validación de formatos - DNI"",
+          ""rule"": ""Exactamente 8 dígitos numéricos"",
+          ""regex"": ""^[0-9]{8}$"",
+          ""examples"": [""45678912"", ""12345678""]
+        },
+        {
+          ""name"": ""Validación de formatos - Fecha"",
+          ""rule"": ""Formato YYYY-MM-DD"",
+          ""examples"": [""2025-11-02"", ""2024-12-31""]
+        },
+        {
+          ""name"": ""Validación de serie"",
+          ""rule"": ""La serie debe coincidir con el tipo de documento"",
+          ""mapping"": {
+            ""F###"": ""Factura (01)"",
+            ""B###"": ""Boleta (03)"",
+            ""FC##"": ""Nota Crédito de Factura (07)"",
+            ""BC##"": ""Nota Crédito de Boleta (07)"",
+            ""FD##"": ""Nota Débito de Factura (08)"",
+            ""BD##"": ""Nota Débito de Boleta (08)""
+          }
+        },
+        {
+          ""name"": ""Validación lógica - Tipo de receptor"",
+          ""rules"": [
+            ""Si es FACTURA (01): el receptor generalmente tiene RUC"",
+            ""Si es BOLETA (03): el receptor puede tener DNI o estar vacío"",
+            ""Si el documento del receptor tiene 11 dígitos: es RUC"",
+            ""Si el documento del receptor tiene 8 dígitos: es DNI""
+          ]
+        },
+        {
+          ""name"": ""Validación de coherencia - Moneda"",
+          ""rule"": ""Todos los montos deben estar en la misma moneda especificada""
+        }
+      ],
+      ""errorHandling"": {
+        ""inconsistentData"": ""Si hay inconsistencias, priorizar los datos del QR si existe"",
+        ""missingData"": ""Si un campo obligatorio falta, usar null y reportar"",
+        ""multipleValues"": ""Si hay valores duplicados o contradictorios, usar el más prominente/destacado""
+      }
+    },
+    
+    ""catalogosReference"": {
+      ""title"": ""CATÁLOGOS SUNAT DE REFERENCIA"",
+      ""note"": ""Usa estos catálogos para codificar correctamente los datos"",
+      ""catalogs"": {
+        ""catalogo01"": {
+          ""name"": ""Tipo de Documento"",
+          ""url"": ""Ver códigos en documentTypes""
+        },
+        ""catalogo05"": {
+          ""name"": ""Tipo de Tributo"",
+          ""codes"": {
+            ""1000"": ""IGV - Impuesto General a las Ventas"",
+            ""2000"": ""ISC - Impuesto Selectivo al Consumo"",
+            ""9995"": ""EXP - Exportación"",
+            ""9996"": ""GRA - Gratuito"",
+            ""9997"": ""EXO - Exonerado"",
+            ""9998"": ""INA - Inafecto""
+          }
+        },
+        ""catalogo06"": {
+          ""name"": ""Tipo de Documento de Identidad"",
+          ""codes"": {
+            ""0"": ""DOC.TRIB.NO.DOM.SIN.RUC"",
+            ""1"": ""DNI"",
+            ""4"": ""CARNET DE EXTRANJERÍA"",
+            ""6"": ""RUC"",
+            ""7"": ""PASAPORTE"",
+            ""A"": ""CÉDULA DIPLOMÁTICA"",
+            ""B"": ""DOC.IDENT.PAIS.RESIDENCIA-NO.D""
+          }
+        },
+        ""catalogo07"": {
+          ""name"": ""Tipo de Afectación del IGV"",
+          ""codes"": {
+            ""10"": ""Gravado - Operación Onerosa"",
+            ""11"": ""Gravado - Retiro por premio"",
+            ""12"": ""Gravado - Retiro por donación"",
+            ""13"": ""Gravado - Retiro"",
+            ""14"": ""Gravado - Retiro por publicidad"",
+            ""15"": ""Gravado - Bonificaciones"",
+            ""16"": ""Gravado - Retiro por entrega a trabajadores"",
+            ""17"": ""Gravado - IVAP"",
+            ""20"": ""Exonerado - Operación Onerosa"",
+            ""21"": ""Exonerado - Transferencia Gratuita"",
+            ""30"": ""Inafecto - Operación Onerosa"",
+            ""31"": ""Inafecto - Retiro por Bonificación"",
+            ""32"": ""Inafecto - Retiro"",
+            ""33"": ""Inafecto - Retiro por Muestras Médicas"",
+            ""34"": ""Inafecto - Retiro por Convenio Colectivo"",
+            ""35"": ""Inafecto - Retiro por premio"",
+            ""36"": ""Inafecto - Retiro por publicidad"",
+            ""40"": ""Exportación""
+          }
+        },
+        ""catalogo09"": {
+          ""name"": ""Tipo de Nota de Crédito"",
+          ""reference"": ""Ver notaCreditoCatalog en documentosRelacionados""
+        },
+        ""catalogo10"": {
+          ""name"": ""Tipo de Nota de Débito"",
+          ""reference"": ""Ver notaDebitoCatalog en documentosRelacionados""
+        },
+        ""catalogo51"": {
+          ""name"": ""Tipo de Operación"",
+          ""reference"": ""Ver tipoOperacion en montosYTotales""
+        },
+        ""catalogo54"": {
+          ""name"": ""Bienes y Servicios Sujetos a Detracción"",
+          ""note"": ""Más de 50 códigos - consultar documentación SUNAT""
+        }
+      }
+    }
+  },
+  
+  ""outputFormat"": {
+    ""title"": ""FORMATO DE SALIDA JSON"",
+    ""description"": ""Retorna ÚNICAMENTE un objeto JSON válido con esta estructura. EXTRAE los valores reales de la imagen, NO uses valores de ejemplo."",
+    ""structure"": {
+      ""documentType"": ""<Tipo completo del documento extraído>"",
+      ""documentTypeCode"": ""<Código de 2 dígitos según catálogo 01>"",
+      ""documentState"": ""<Estado de validación si visible: ACEPTADO/ACEPTADO_CON_OBSERVACION/RECHAZADO o null>"",
+      
+      ""emisor"": {
+        ""ruc"": ""<11 dígitos>"",
+        ""razonSocial"": ""<Razón social completa>"",
+        ""nombreComercial"": ""<Nombre comercial o null>"",
+        ""domicilioFiscal"": ""<Dirección fiscal completa>""
+      },
+      
+      ""receptor"": {
+        ""tipoDocumento"": ""<Código tipo documento: 1, 4, 6, 7, etc o null>"",
+        ""numeroDocumento"": ""<RUC 11 dígitos, DNI 8 dígitos, etc o null>"",
+        ""razonSocial"": ""<Nombre o razón social>"",
+        ""direccion"": ""<Dirección del cliente o null>""
+      },
+      
+      ""comprobante"": {
+        ""serie"": ""<Parte de la serie: F001, B092, etc>"",
+        ""numero"": ""<Número correlativo sin la serie>"",
+        ""serieNumero"": ""<Completo: F001-00012345>"",
+        ""fechaEmision"": ""<YYYY-MM-DD>"",
+        ""horaEmision"": ""<HH:MM:SS o null>"",
+        ""fechaVencimiento"": ""<YYYY-MM-DD o null>""
+      },
+      
+      ""montos"": {
+        ""moneda"": ""<PEN, USD, EUR>"",
+        ""tipoOperacion"": ""<Código operación o null>"",
+        ""subtotal"": 0.00,
+        ""opExonerada"": 0.00,
+        ""opInafecta"": 0.00,
+        ""opGratuita"": 0.00,
+        ""descuentosGlobales"": 0.00,
+        ""totalOperacionesGravadas"": 0.00,
+        ""igv"": {
+          ""tasa"": 0.0,
+          ""monto"": 0.00
+        },
+        ""otrosTributos"": {
+          ""isc"": 0.00,
+          ""icbper"": 0.00,
+          ""ivap"": 0.00
+        },
+        ""importeTotal"": 0.00,
+        ""montoEnLetras"": ""<Monto en letras o null>""
+      },
+      
+      ""documentoRelacionado"": {
+        ""tipo"": ""<Código tipo documento relacionado o null>"",
+        ""serieNumero"": ""<Serie-Número del doc relacionado o null>"",
+        ""motivoCodigo"": ""<Código motivo nota o null>"",
+        ""motivoDescripcion"": ""<Descripción motivo o null>""
+      },
+      
+      ""items"": [
+        {
+          ""numero"": 1,
+          ""cantidad"": 0.00,
+          ""unidadMedida"": ""<Código unidad>"",
+          ""codigoProducto"": ""<Código o null>"",
+          ""descripcion"": ""<Descripción completa>"",
+          ""valorUnitario"": 0.00,
+          ""precioVentaUnitario"": 0.00,
+          ""valorVenta"": 0.00,
+          ""igv"": 0.00,
+          ""totalItem"": 0.00,
+          ""tipoAfectacionIGV"": ""<Código afectación>""
+        }
+      ],
+      
+      ""informacionAdicional"": {
+        ""ordenCompra"": ""<Número o null>"",
+        ""guiaRemision"": ""<Número o null>"",
+        ""condicionesPago"": ""<Condiciones o null>"",
+        ""cuentaBancaria"": ""<Cuenta o null>"",
+        ""detraccion"": {
+          ""codigo"": ""<Código o null>"",
+          ""porcentaje"": 0.00,
+          ""monto"": 0.00,
+          ""cuentaBN"": ""<Cuenta BN o null>""
+        },
+        ""placaVehiculo"": ""<Placa o null>"",
+        ""observaciones"": ""<Notas adicionales o null>""
+      },
+      
+      ""codigoQR"": {
+        ""existe"": false,
+        ""datosExtraidos"": {
+          ""rucEmisor"": ""<RUC o null>"",
+          ""tipoComprobante"": ""<Código o null>"",
+          ""serie"": ""<Serie o null>"",
+          ""numero"": ""<Número o null>"",
+          ""fechaEmision"": ""<Fecha o null>"",
+          ""importeTotal"": 0.00
+        },
+        ""validacionQR"": {
+          ""coincideConDatosVisuales"": false,
+          ""observaciones"": ""<Observaciones o null>""
+        }
+      },
+      
+      ""validaciones"": {
+        ""calculoTotalCorrecto"": false,
+        ""calculoIGVCorrecto"": false,
+        ""formatosValidos"": false,
+        ""observaciones"": [""<Lista de observaciones encontradas>""]
+      }
+    }
+  },
+  
+  ""criticalRules"": {
+    ""title"": ""REGLAS CRÍTICAS FINALES"",
+    ""rules"": [
+      ""EXTRAE todos los valores REALES de la imagen adjunta"",
+      ""NO uses valores de ejemplo predefinidos"",
+      ""Si un campo no existe, no se puede leer, o no aplica: usa null"",
+      ""Los números (subtotal, igvTasa, igvMonto, importeTotal, etc) DEBEN ser números Float, NO strings"",
+      ""Los números decimales usan punto (.) como separador: 100.50 NO 100,50"",
+      ""Las fechas DEBEN ser strings en formato ISO 8601: 'YYYY-MM-DD'"",
+      ""NO incluyas comentarios en el JSON final"",
+      ""NO incluyas explicaciones antes o después del JSON"",
+      ""NO uses comillas dobles dentro de strings (escapar si es necesario)"",
+      ""Responde SOLO con el JSON válido y completo"",
+      ""Si hay múltiples valores para un campo, usa el más prominente o el del QR"",
+      ""Prioriza los datos del código QR si existe y es legible"",
+      ""Si los cálculos no coinciden, reporta en validaciones pero no inventes datos"",
+      ""Mantén la precisión decimal: no redondees innecesariamente los montos"",
+      ""Para arrays vacíos usa [] no null"",
+      ""Para objetos vacíos usa {} no null"",
+      ""Campos opcionales inexistentes: usar null"",
+      ""IMPORTANTE: Este JSON es para procesamiento automático - debe ser 100% válido y parseable""
+    ]
+  },
+  
+  ""qualityChecks"": {
+    ""beforeResponse"": [
+      ""¿Todos los campos obligatorios tienen valores válidos?"",
+      ""¿Los montos están en formato numérico correcto?"",
+      ""¿Las fechas están en formato YYYY-MM-DD?"",
+      ""¿Los RUC/DNI cumplen con las longitudes correctas?"",
+      ""¿La suma subtotal + IGV ≈ total?"",
+      ""¿El tipo de documento coincide con la serie?"",
+      ""¿El JSON es válido y parseable?"",
+      ""¿No hay valores de ejemplo predefinidos?"",
+      ""¿Solo está el JSON sin texto adicional?""
+    ]
+  }
+}",U2FsdGVkX1/TCDJ1yv7mHWkOMRmtz3JsVWHbGuoVhPZyMFAgiDWiKZFxkUw7CrMQJ1LJ1jihXE7as8DtLnaQjQ==,U2FsdGVkX1/g+A0uMzRkFmMrYHO39KyatzLfX+/yJYohROSb2Hw6H+AsDc5nzrys,t,10430853746,AzaleiaPeru,t,f,U2FsdGVkX18/OfWBLODbqeH4KrYAbQgo5bQXm2OU6XQ=,U2FsdGVkX18Tau0BaaFF8tyVFKOaNmu9S24t6rz8lPM=,1433,t,U2FsdGVkX18MO0dK0f/I49ibSLdOPZj9qBQjaReqzKo=,t,,3,,,,t,t,15,f,INBOX,,,,t,f,imap,,,,,,,993,"factura,comprobante,invoice,boleta,nota de crédito",t,,f,,,,587,t,,Solicitud de XML - Factura Electrónica,f,1440,,7,B6D711FCDE4D4FD5936544120E713976,http://localhost:8080,51997532990,f,2025-11-20 16:18:29.287,t,,azaleia-whatsapp,t,t,t,5116193635,"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAVwAAAFcCAYAAACEFgYsAAAjBElEQVR4AezB0a0cS4xEwaOGrKBf9CVNoC/0K93Q6m/5VUBh5vbTLhjx689frLXW+nEPa621XvGw1lrrFQ9rrbVe8bDWWusVD2uttV7xsNZa6xUPa621XvGw1lrrFQ9rrbVe8bDWWusVD2uttV7xm0tRyZus5kZUcmI1U1QyWc0UlZxYzRSV3LCaKSr5L1nNSVQyWc0Uldywmikq+YTV3IhKJqs5iUomq5mikslqTqKSE6uZopITq7kRlZxYzUlUcsNqflJU8iarufGw1lrrFQ9rrbVe8bDWWusVv/mQ1XxTVHISlUxWM1nNJ6KSG1HJZDVTVPImq5mikslqpqhkiko+YTUnUckUlZxYzUlUchKV3IhKvikqObGaKSr5RFTyCauZopLJam5YzRSVfJPVnFjNN0Uln3hYa631ioe11lqveFhrrfWK33xZVHLDav5lVnMjKpms5obV3IhKpqjkhtXciEqmqOSG1ZxEJT/Jan6S1UxRyUlUchKVnFjNvywqmazmJCqZrGaKSj4Rldywmm96WGut9YqHtdZar3hYa631it/8HxeVfJPVnEQlJ1YzRSU3rGaKSiarObGak6hkspqTqGSymp9kNTesZopKbkQln7CaG1YzRSUnVjNFJSdRyWQ1P8lqpqhkspr1vx7WWmu94mGttdYrHtZaa73i15+/uBCVTFYzRSU3rGaKSiarmaKSN1nNSVRyw2qmqORfYjUnUclkNVNUcmI1U1TyCav5pqjk/xOrmaKSE6u5EZV8wmq+KSqZrGaKSm5YzRSVTFZz42GttdYrHtZaa73iYa211it+82VW8y+xmpOo5CQqObGaG1HJZDVTVHLDam5EJSdRySesZopKbljNT4pKJquZrOYkKpms5kZUcsNqTqKSyWqmqORGVPIJqzmJSqaoZLKaKSqZrOYTVvNfelhrrfWKh7XWWq94WGut9YrffCgq+S9ZzRSVnEQlk9VMUclkNVNUchKVTFbzCauZopKTqGSymhOrmaKSyWqmqOQkKpmsZopKJquZopLJaqaoZLKaKSqZrOZGVDJZzY2oZLKaE6uZopKTqGSymikqmaxmikomq5mikslqpqhkspopKpms5sRqpqhkspopKpms5iQq+Zc8rLXWesXDWmutVzystdZ6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"

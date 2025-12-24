@@ -1,0 +1,7 @@
+id,planillaId,dia,mes,anio,fechaGasto,tipoDoc,concepto,tipoGasto,importe,createdAt
+1,cmja8oxhm0003yf8fiixqbayw,10,12,2025,2025-12-11 00:00:00,Factura,Almuerzo con Prospecto/ cliente - Isbel s.a.c (Brilaz) ,Alimentacion,89.5,2025-12-17 16:42:16.331
+2,cmjaggpxy000jyf8f58fbry6w,10,12,2025,2025-12-11 00:00:00,Sin documento,Propina,Otros,10,2025-12-17 20:19:50.23
+3,cmjd8gwwv001wg2lbvf4th3vt,18,12,2025,2025-12-19 00:00:00,Boleta,CARNE DE SANIDAD CARLOS MUÑOZ IMPULSADOR,Otros,20,2025-12-19 18:59:20.864
+4,cmjd8ntbv0023g2lblutmklp9,18,12,2025,2025-12-19 00:00:00,Boleta,CARNE DE SANIDAD DAVIS GAVINO IMPULSADOR,Otros,20,2025-12-19 19:04:42.811
+5,cmjd8op9j0026g2lbjdce38bm,18,12,2025,2025-12-19 00:00:00,Boleta,CARNE DE SANIDAD DANIELA GUEVARA IMPULSADOR,Otros,15,2025-12-19 19:05:24.199
+6,cmjd8pon70029g2lb1t7fgmsd,18,12,2025,2025-12-19 00:00:00,Boleta,CARNE DE SAN IDAD MILENNY GRANADO IMPULSADORA,Otros,19.1,2025-12-19 19:06:10.051
