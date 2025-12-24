@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         username: true,
         role: true,
         sedeId: true,
+        active: true,
         modulosPermitidos: true,
         sede: {
           select: {
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest) {
         sedeId: sedeId || null,
         modulosPermitidos,
         organizationId: session.user.organizationId,
+        active: true,
       },
       select: {
         id: true,

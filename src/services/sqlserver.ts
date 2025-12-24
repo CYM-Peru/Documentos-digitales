@@ -1205,4 +1205,241 @@ export class SqlServerService {
       throw new Error(`Failed to get movilidad gastos: ${error.message}`)
     }
   }
+
+  /**
+   * Inserta una planilla de gastos reparables en SQL Server
+   */
+  async insertGastoReparablePlanilla(data: {
+    id: string
+    nroPlanilla?: string
+    razonSocial?: string
+    ruc?: string
+    periodo?: string
+    fechaEmision?: Date
+    nombresApellidos?: string
+    cargo?: string
+    dni?: string
+    centroCosto?: string
+    totalGeneral: number
+    usuario: string
+    nroRendicion?: string
+    nroCajaChica?: string
+    tipoOperacion?: 'RENDICION' | 'CAJA_CHICA'
+    codLocal?: string
+    items: Array<{
+      fechaGasto?: Date
+      dia?: number
+      mes?: number
+      anio?: number
+      tipoDoc?: string
+      concepto?: string
+      tipoGasto?: string
+      importe: number
+    }>
+  }): Promise<void> {
+    try {
+      console.log('📄 SQL Server - Insertando planilla de gastos reparables...')
+      console.log('📄 Datos:', {
+        id: data.id,
+        nroPlanilla: data.nroPlanilla,
+        totalGeneral: data.totalGeneral,
+        itemsCount: data.items.length,
+        tipoOperacion: data.tipoOperacion,
+      })
+
+      const pool = await this.getPool()
+      const transaction = new sql.Transaction(pool)
+
+      await transaction.begin()
+
+      try {
+        // Insertar planilla en CntCtaGastoReparablePlanillas
+        await transaction
+          .request()
+          .input('ID', sql.NVarChar(255), data.id)
+          .input('NroPlanilla', sql.NVarChar(50), data.nroPlanilla || null)
+          .input('RazonSocial', sql.NVarChar(255), data.razonSocial || null)
+          .input('RUC', sql.NVarChar(11), data.ruc || null)
+          .input('Periodo', sql.NVarChar(50), data.periodo || null)
+          .input('FechaEmision', sql.DateTime, data.fechaEmision || null)
+          .input('NombresApellidos', sql.NVarChar(255), data.nombresApellidos || null)
+          .input('Cargo', sql.NVarChar(100), data.cargo || null)
+          .input('DNI', sql.NVarChar(8), data.dni || null)
+          .input('CentroCosto', sql.NVarChar(100), data.centroCosto || null)
+          .input('TotalGeneral', sql.Decimal(18, 2), data.totalGeneral)
+          .input('Usuario', sql.NVarChar(100), data.usuario)
+          .input('NroRendicion', sql.NVarChar(50), data.nroRendicion || null)
+          .input('NroCajaChica', sql.NVarChar(50), data.nroCajaChica || null)
+          .input('TipoOperacion', sql.NVarChar(20), data.tipoOperacion || null)
+          .input('CodLocal', sql.NVarChar(10), data.codLocal || null)
+          .query(`
+            INSERT INTO [dbo].[CntCtaGastoReparablePlanillas]
+            ([ID], [NroPlanilla], [RazonSocial], [RUC], [Periodo], [FechaEmision],
+             [NombresApellidos], [Cargo], [DNI], [CentroCosto],
+             [TotalGeneral], [Usuario], [FechaCreacion],
+             [NroRendicion], [NroCajaChica], [TipoOperacion], [CodLocal])
+            VALUES
+            (@ID, @NroPlanilla, @RazonSocial, @RUC, @Periodo, @FechaEmision,
+             @NombresApellidos, @Cargo, @DNI, @CentroCosto,
+             @TotalGeneral, @Usuario, GETDATE(),
+             @NroRendicion, @NroCajaChica, @TipoOperacion, @CodLocal)
+          `)
+
+        console.log('✅ SQL Server - Planilla insertada en CntCtaGastoReparablePlanillas')
+
+        // Insertar items en CntCtaGastoReparableItems
+        for (const item of data.items) {
+          await transaction
+            .request()
+            .input('PlanillaID', sql.NVarChar(255), data.id)
+            .input('FechaGasto', sql.DateTime, item.fechaGasto || null)
+            .input('Dia', sql.Int, item.dia || null)
+            .input('Mes', sql.Int, item.mes || null)
+            .input('Anio', sql.Int, item.anio || null)
+            .input('TipoDoc', sql.NVarChar(50), item.tipoDoc || null)
+            .input('Concepto', sql.NVarChar(255), item.concepto || null)
+            .input('TipoGasto', sql.NVarChar(100), item.tipoGasto || null)
+            .input('Importe', sql.Decimal(18, 2), item.importe)
+            .query(`
+              INSERT INTO [dbo].[CntCtaGastoReparableItems]
+              ([PlanillaID], [FechaGasto], [Dia], [Mes], [Anio],
+               [TipoDoc], [Concepto], [TipoGasto], [Importe], [FechaCreacion])
+              VALUES
+              (@PlanillaID, @FechaGasto, @Dia, @Mes, @Anio,
+               @TipoDoc, @Concepto, @TipoGasto, @Importe, GETDATE())
+            `)
+        }
+
+        console.log(`✅ SQL Server - ${data.items.length} items insertados en CntCtaGastoReparableItems`)
+
+        await transaction.commit()
+        console.log('✅ SQL Server - Transacción completada para gastos reparables')
+      } catch (error) {
+        await transaction.rollback()
+        throw error
+      }
+    } catch (error: any) {
+      console.error('❌ SQL Server - Error al insertar planilla de gastos reparables:', error.message)
+      throw new Error(`Failed to insert gasto reparable planilla: ${error.message}`)
+    }
+  }
+
+  /**
+   * Inserta una planilla de gastos reparables en CntCtaCajaChicaDocumentosIA
+   */
+  async insertGastoReparableEnDocumentosIA(data: {
+    id: string
+    nroPlanilla?: string
+    nombresApellidos?: string
+    totalGeneral: number
+    nroRendicion?: string
+    nroCajaChica?: string
+    tipoOperacion?: 'RENDICION' | 'CAJA_CHICA'
+    codLocal?: string
+    items: Array<{
+      fechaGasto?: Date
+      concepto?: string
+      importe: number
+    }>
+  }): Promise<void> {
+    try {
+      console.log('📄 SQL Server - Insertando gasto reparable en DocumentosIA...')
+
+      const pool = await this.getPool()
+
+      // Determinar tabla según tipo de operación
+      let tableName = 'CntCtaDocumentosIA'
+      let nroRend = data.nroRendicion
+
+      if (data.tipoOperacion === 'CAJA_CHICA' && data.nroCajaChica) {
+        tableName = 'CntCtaCajaChicaDocumentosIA'
+        nroRend = data.nroCajaChica
+      } else if (data.tipoOperacion === 'RENDICION' && data.nroRendicion) {
+        tableName = 'CntCtaDocumentosIA'
+        nroRend = data.nroRendicion
+      }
+
+      if (!nroRend) {
+        console.log('⚠️ SQL Server - Sin número de rendición/caja chica, no se inserta en DocumentosIA')
+        return
+      }
+
+      // Verificar si ya existe
+      const checkResult = await pool
+        .request()
+        .input('UniqueID', sql.NVarChar(255), data.id)
+        .query(`SELECT TOP 1 [UniqueID] FROM [dbo].[${tableName}] WHERE [UniqueID] = @UniqueID`)
+
+      const exists = checkResult.recordset.length > 0
+
+      // Construir descripción con items
+      let descripcion = `GASTOS REPARABLES - ${data.nombresApellidos || 'N/A'}`
+      if (data.items.length > 0) {
+        const conceptos = data.items
+          .map((item) => item.concepto)
+          .filter((c) => c)
+          .slice(0, 3)
+        if (conceptos.length > 0) {
+          descripcion += ` (${conceptos.join(', ')}${data.items.length > 3 ? '...' : ''})`
+        }
+      }
+
+      if (exists) {
+        // Actualizar registro existente
+        await pool
+          .request()
+          .input('UniqueID', sql.NVarChar(255), data.id)
+          .input('NroRend', sql.NVarChar(50), nroRend)
+          .input('CodLocal', sql.NVarChar(10), data.codLocal || null)
+          .input('TipoDocumento', sql.NVarChar(50), 'GASTO REPARABLE')
+          .input('NroDocumento', sql.NVarChar(100), data.nroPlanilla || null)
+          .input('Proveedor', sql.NVarChar(255), data.nombresApellidos || null)
+          .input('Descripcion', sql.NVarChar(sql.MAX), descripcion)
+          .input('Total', sql.Decimal(18, 2), data.totalGeneral)
+          .input('CantidadItems', sql.Int, data.items.length)
+          .query(`
+            UPDATE [dbo].[${tableName}]
+            SET
+              [NroRend] = @NroRend,
+              [CodLocal] = @CodLocal,
+              [TipoDocumento] = @TipoDocumento,
+              [NroDocumento] = @NroDocumento,
+              [Proveedor] = @Proveedor,
+              [Descripcion] = @Descripcion,
+              [Total] = @Total,
+              [CantidadItems] = @CantidadItems,
+              [FechaActualizacion] = GETDATE()
+            WHERE [UniqueID] = @UniqueID
+          `)
+      } else {
+        // Insertar nuevo registro
+        await pool
+          .request()
+          .input('UniqueID', sql.NVarChar(255), data.id)
+          .input('NroRend', sql.NVarChar(50), nroRend)
+          .input('CodLocal', sql.NVarChar(10), data.codLocal || null)
+          .input('TipoDocumento', sql.NVarChar(50), 'GASTO REPARABLE')
+          .input('NroDocumento', sql.NVarChar(100), data.nroPlanilla || null)
+          .input('Proveedor', sql.NVarChar(255), data.nombresApellidos || null)
+          .input('Descripcion', sql.NVarChar(sql.MAX), descripcion)
+          .input('Total', sql.Decimal(18, 2), data.totalGeneral)
+          .input('CantidadItems', sql.Int, data.items.length)
+          .query(`
+            INSERT INTO [dbo].[${tableName}]
+            ([UniqueID], [NroRend], [CodLocal], [TipoDocumento], [NroDocumento],
+             [Proveedor], [Descripcion], [Total], [CantidadItems],
+             [FechaCreacion], [FechaActualizacion])
+            VALUES
+            (@UniqueID, @NroRend, @CodLocal, @TipoDocumento, @NroDocumento,
+             @Proveedor, @Descripcion, @Total, @CantidadItems,
+             GETDATE(), GETDATE())
+          `)
+      }
+
+      console.log(`✅ SQL Server - 1 registro ${exists ? 'actualizado' : 'insertado'} en ${tableName} con ${data.items.length} items`)
+    } catch (error: any) {
+      console.error('❌ SQL Server - Error al insertar gasto reparable en DocumentosIA:', error.message)
+      throw new Error(`Failed to insert gasto reparable into DocumentosIA: ${error.message}`)
+    }
+  }
 }

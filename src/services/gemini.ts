@@ -380,4 +380,150 @@ REGLAS:
       throw new Error('Failed to analyze planilla with Gemini Vision')
     }
   }
+
+  /**
+   * Analiza una imagen de planilla de gastos reparables y extrae los datos estructurados
+   */
+  async analyzePlanillaGastoReparable(imageBuffer: Buffer): Promise<{
+    nombresApellidos?: string
+    cargo?: string
+    dni?: string
+    centroCosto?: string
+    periodo?: string
+    items: Array<{
+      fechaGasto: string
+      tipoDoc?: string
+      concepto?: string
+      tipoGasto?: string
+      importe: number
+    }>
+    totalGeneral: number
+  }> {
+    try {
+      console.log(`📄 Gemini Vision - Analizando planilla de gastos reparables (${this.model})...`)
+
+      const model = this.genAI.getGenerativeModel({ model: this.model })
+
+      const prompt = `Analiza esta PLANILLA DE GASTOS REPARABLES y extrae los datos estructurados.
+
+Una planilla de gastos reparables es un documento interno que registra gastos sin comprobante de pago formal (gastos menores, taxis sin recibo, compras sin factura, etc).
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 DATOS A EXTRAER
+═══════════════════════════════════════════════════════════════════════════════
+
+DATOS DEL TRABAJADOR:
+- nombresApellidos: Nombre completo del trabajador (busca: "NOMBRES Y APELLIDOS", "TRABAJADOR", "NOMBRE")
+- cargo: Puesto o cargo del trabajador (busca: "CARGO", "PUESTO")
+- dni: Documento de identidad (8 dígitos, busca: "DNI", "DOCUMENTO")
+- centroCosto: Centro de costo o área (busca: "CENTRO DE COSTO", "ÁREA", "DEPARTAMENTO", "CC")
+- periodo: Período de la planilla (busca: "PERIODO", "MES", formato: "DICIEMBRE 2025" o similar)
+
+DETALLE DE GASTOS (lista de items):
+Para cada fila/registro de gasto, extrae:
+- fechaGasto: Fecha del gasto en formato YYYY-MM-DD
+  ⚠️ IMPORTANTE: Las fechas peruanas son DD/MM/YYYY (día/mes/año)
+  Ejemplo: "15/12/2025" = 15 de diciembre → retorna "2025-12-15"
+- tipoDoc: Tipo de documento (busca: "TIPO DOC", "TIPO DOCUMENTO")
+  Valores comunes: "RECIBO", "BOLETA", "TICKET", "NINGUNO", "SIN COMPROBANTE"
+- concepto: Concepto o descripción del gasto (busca: "CONCEPTO", "DESCRIPCIÓN", "DETALLE")
+  Ejemplos: "Taxi", "Almuerzo", "Copias", "Útiles oficina"
+- tipoGasto: Categoría o tipo de gasto (busca: "TIPO GASTO", "CATEGORÍA")
+  Valores comunes: "MOVILIDAD", "ALIMENTACIÓN", "MATERIALES", "VARIOS"
+- importe: Monto del gasto en soles (busca: "IMPORTE", "MONTO", "S/")
+
+TOTAL:
+- totalGeneral: Suma total de todos los importes
+
+═══════════════════════════════════════════════════════════════════════════════
+📤 FORMATO DE SALIDA JSON
+═══════════════════════════════════════════════════════════════════════════════
+
+{
+  "nombresApellidos": "MARIA ELENA TORRES VEGA",
+  "cargo": "ASISTENTE ADMINISTRATIVA",
+  "dni": "87654321",
+  "centroCosto": "ADMINISTRACIÓN",
+  "periodo": "DICIEMBRE 2025",
+  "items": [
+    {
+      "fechaGasto": "2025-12-01",
+      "tipoDoc": "NINGUNO",
+      "concepto": "Taxi a reunión con proveedor",
+      "tipoGasto": "MOVILIDAD",
+      "importe": 12.00
+    },
+    {
+      "fechaGasto": "2025-12-02",
+      "tipoDoc": "TICKET",
+      "concepto": "Almuerzo de trabajo",
+      "tipoGasto": "ALIMENTACIÓN",
+      "importe": 25.00
+    },
+    {
+      "fechaGasto": "2025-12-03",
+      "tipoDoc": "RECIBO",
+      "concepto": "Copias y anillados",
+      "tipoGasto": "MATERIALES",
+      "importe": 8.50
+    }
+  ],
+  "totalGeneral": 45.50
+}
+
+REGLAS:
+- Si un campo no existe o no se puede leer, usa null (excepto items que debe ser array vacío)
+- Los importes DEBEN ser números (Float), NO strings
+- Las fechas DEBEN ser strings en formato YYYY-MM-DD
+- Extrae TODOS los gastos/items que veas en la planilla
+- Si hay una tabla de gastos, extrae cada fila como un elemento del array
+- Responde SOLO con el JSON válido, sin texto adicional`
+
+      const imageParts = [
+        {
+          inlineData: {
+            data: imageBuffer.toString('base64'),
+            mimeType: 'image/jpeg',
+          },
+        },
+      ]
+
+      const result = await model.generateContent([prompt, ...imageParts])
+      const response = await result.response
+      const text = response.text()
+
+      console.log('📄 Gemini Vision - Respuesta gasto reparable recibida')
+      console.log('📄 Gemini RAW Response (primeros 500 chars):', text.substring(0, 500))
+
+      // Extraer JSON de la respuesta
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.error('❌ Gemini no retornó JSON válido. Respuesta completa:', text)
+        throw new Error('Gemini no retornó JSON válido para planilla de gastos reparables')
+      }
+
+      const data = JSON.parse(jsonMatch[0])
+
+      console.log('✅ Gemini Vision - Datos gasto reparable extraídos:', {
+        nombresApellidos: data.nombresApellidos || 'NOT FOUND',
+        cargo: data.cargo || 'NOT FOUND',
+        dni: data.dni || 'NOT FOUND',
+        itemsCount: data.items?.length || 0,
+        totalGeneral: data.totalGeneral || 0,
+      })
+
+      return {
+        nombresApellidos: data.nombresApellidos || null,
+        cargo: data.cargo || null,
+        dni: data.dni || null,
+        centroCosto: data.centroCosto || null,
+        periodo: data.periodo || null,
+        items: data.items || [],
+        totalGeneral: data.totalGeneral || 0,
+      }
+    } catch (error) {
+      console.error('❌ Gemini Vision gasto reparable error:', error)
+      throw new Error('Failed to analyze planilla gasto reparable with Gemini Vision')
+    }
+  }
 }

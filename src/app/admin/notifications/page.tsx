@@ -106,7 +106,7 @@ export default function NotificationsSettingsPage() {
             ⚙️ Configuración de Notificaciones
           </h1>
           <p className="text-gray-600">
-            Configura el horario y preferencias de notificaciones por WhatsApp
+            Configura el horario y preferencias de notificaciones automáticas
           </p>
         </div>
 

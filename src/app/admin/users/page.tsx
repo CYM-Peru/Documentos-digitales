@@ -18,6 +18,7 @@ interface User {
   role: string
   sedeId: string | null
   sede: Sede | null
+  active: boolean
   createdAt: string
   _count: {
     invoices: number
@@ -180,12 +181,16 @@ export default function UsersPage() {
     setUpdating(true)
 
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editingUser.id,
+          name: editingUser.name,
+          email: editingUser.email,
+          username: editingUser.username || null,
           role: editingUser.role,
+          sedeId: editingUser.sedeId || null,
+          active: editingUser.active ?? true,
         }),
       })
 
@@ -719,7 +724,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Edit User Role Modal */}
+      {/* Edit User Modal */}
       {showEditModal && editingUser && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -730,21 +735,47 @@ export default function UsersPage() {
             }
           }}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl relative z-[51]">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl relative z-[51] max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-3xl">
-              <h3 className="font-bold text-xl">Editar Rol de Usuario</h3>
-              <p className="text-blue-100 text-sm mt-1">{editingUser.name}</p>
+              <h3 className="font-bold text-xl">Editar Usuario</h3>
+              <p className="text-blue-100 text-sm mt-1">Modifica la información del usuario</p>
             </div>
             <form onSubmit={handleUpdateUser} className="p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre *</label>
                   <input
                     type="text"
-                    value={editingUser.email}
-                    disabled
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-600 cursor-not-allowed"
+                    value={editingUser.name}
+                    onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                    required
+                    autoFocus
+                    placeholder="Nombre completo"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Se formateará automáticamente a Título</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email *</label>
+                  <input
+                    type="email"
+                    value={editingUser.email}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                    required
+                    placeholder="usuario@azaleia.com.pe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Usuario (para login)</label>
+                  <input
+                    type="text"
+                    value={editingUser.username || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value.toUpperCase() })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white font-mono"
+                    placeholder="USUARIO"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Opcional. Se convertirá a mayúsculas</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Rol</label>
@@ -752,7 +783,6 @@ export default function UsersPage() {
                     value={editingUser.role}
                     onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-                    autoFocus
                   >
                     <option value="USER_L1">Usuario L1 (solo Planillas)</option>
                     <option value="USER_L2">Usuario L2 (Rendiciones + Cajas)</option>
@@ -765,6 +795,49 @@ export default function UsersPage() {
                       <option value="SUPER_ADMIN">Super Administrador</option>
                     )}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Sede</label>
+                  <select
+                    value={editingUser.sedeId || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, sedeId: e.target.value || null })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                  >
+                    <option value="">Sin sede asignada</option>
+                    {sedes.map(sede => (
+                      <option key={sede.id} value={sede.id}>{sede.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border-2 border-gray-200">
+                    <div>
+                      <span className="block text-sm font-semibold text-gray-700">Estado del Usuario</span>
+                      <span className="block text-xs text-gray-500 mt-1">
+                        {editingUser.active ? 'Usuario activo - puede iniciar sesión' : 'Usuario inactivo - no puede iniciar sesión'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={editingUser.active ?? true}
+                        onChange={(e) => setEditingUser({ ...editingUser, active: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-14 h-8 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                    </div>
+                  </label>
+                </div>
+                <div className="bg-amber-50 p-4 rounded-xl border-2 border-amber-200">
+                  <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Nota sobre contraseñas
+                  </p>
+                  <p className="text-xs text-amber-700 mt-2">
+                    No puedes cambiar la contraseña desde aquí. El usuario debe usar la opción de recuperación de contraseña.
+                  </p>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

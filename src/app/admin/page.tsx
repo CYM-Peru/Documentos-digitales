@@ -185,6 +185,7 @@ export default function AdminPage() {
         ocrProvider: formData.ocrProvider,
         emailNotifications: formData.emailNotifications,
         webhookNotifications: formData.webhookNotifications,
+        // WhatsApp settings - Backend still functional, UI hidden
         whatsappEnabled: formData.whatsappEnabled,
         whatsappApproverNumbers: formData.whatsappApproverNumbers || undefined,
         whatsappNotifyPlanillaCreated: formData.whatsappNotifyPlanillaCreated,
@@ -236,7 +237,8 @@ export default function AdminPage() {
 
   const tabs = [
     { id: 'gemini', name: 'Gemini AI', icon: '🤖', gradient: 'from-purple-500 to-indigo-500' },
-    { id: 'whatsapp', name: 'WhatsApp', icon: '💬', gradient: 'from-green-500 to-emerald-600' },
+    // WhatsApp tab hidden - UI only, backend still functional
+    // { id: 'whatsapp', name: 'WhatsApp', icon: '💬', gradient: 'from-green-500 to-emerald-600' },
     { id: 'sunat', name: 'SUNAT API', icon: '🔐', gradient: 'from-blue-600 to-indigo-600' },
     { id: 'google', name: 'Google Sheets', icon: '📊', gradient: 'from-green-500 to-emerald-500' },
     { id: 'aws', name: 'AWS Textract', icon: '☁️', gradient: 'from-orange-500 to-red-500' },
@@ -396,8 +398,8 @@ Analiza esta factura peruana y extrae:
             </div>
           )}
 
-          {/* WhatsApp Notifications Tab */}
-          {activeTab === 'whatsapp' && (
+          {/* WhatsApp Notifications Tab - HIDDEN (UI only, backend still functional) */}
+          {false && activeTab === 'whatsapp' && (
             <div className="space-y-3 animate-fade-in-up">
               <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-green-100 shadow-md">
                 <div className="flex items-start justify-between mb-3">

@@ -584,3 +584,21 @@ model GastoReparableCorrelativo {
   @@map("gasto_reparable_correlativos")
   @@schema("invoice_system")
 }
+
+// ========== PASSWORD RECOVERY ==========
+
+model PasswordResetToken {
+  id          String   @id @default(cuid())
+  userId      String
+  token       String   @unique // Token único generado (hashed)
+  expiresAt   DateTime // Fecha de expiración del token (15 minutos)
+  used        Boolean  @default(false) // Indica si el token ya fue usado
+  usedAt      DateTime? // Fecha en que se usó el token
+  createdAt   DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+  @@schema("invoice_system")
+}

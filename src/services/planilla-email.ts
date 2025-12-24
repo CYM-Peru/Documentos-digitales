@@ -383,4 +383,214 @@ export class PlanillaEmailService {
       return { success: false, message: error.message }
     }
   }
+
+  /**
+   * Notifica a los aprobadores que hay una nueva planilla de gastos reparables
+   */
+  async notifyNewGastoReparable(planilla: { planillaId: string; nroPlanilla: string; userName: string; userEmail?: string; totalAmount: number; itemCount: number; createdAt: Date }): Promise<boolean> {
+    try {
+      const configLoaded = await this.loadConfig()
+      if (!configLoaded) return false
+
+      const settings = await prisma.notificationSettings.findUnique({
+        where: { id: 'default' }
+      })
+
+      if (!settings?.enabled || !settings?.notifyOnNewPlanilla) return false
+
+      const approverEmails = await this.getApproverEmails()
+      if (approverEmails.length === 0) {
+        console.log('⚠️ No hay emails de aprobadores configurados')
+        return false
+      }
+
+      const transporter = this.createTransporter()
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #059669, #10B981); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .badge { background: #10B981; color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; font-size: 14px; margin-top: 10px; }
+    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+    .info-box { background: white; border-left: 4px solid #10B981; padding: 15px; margin: 15px 0; border-radius: 4px; }
+    .btn { background: #059669; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; }
+    .footer { background: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📄 Nueva Planilla de Gastos Reparables</h1>
+      <span class="badge">PENDIENTE DE APROBACIÓN</span>
+    </div>
+    <div class="content">
+      <p>Hola,</p>
+      <p>Se ha recibido una nueva planilla de gastos reparables para aprobación:</p>
+      <div class="info-box">
+        <p><strong>Planilla:</strong> ${planilla.nroPlanilla}</p>
+        <p><strong>Trabajador:</strong> ${planilla.userName}</p>
+        <p><strong>Total:</strong> S/ ${planilla.totalAmount.toFixed(2)}</p>
+        <p><strong>Items:</strong> ${planilla.itemCount} gasto(s)</p>
+        <p><strong>Fecha:</strong> ${planilla.createdAt.toLocaleDateString('es-PE')}</p>
+      </div>
+      <p>Por favor, revisa y aprueba esta planilla en el sistema.</p>
+      <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/planillas" class="btn">Ver Planilla</a>
+    </div>
+    <div class="footer">
+      <p>Sistema Cockpit - Calzados Azaleia Perú S.A.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+
+      await transporter.sendMail({
+        from: this.config!.emailFrom,
+        to: approverEmails,
+        subject: `📄 Nueva Planilla de Gastos Reparables ${planilla.nroPlanilla} - ${planilla.userName}`,
+        html: htmlContent
+      })
+
+      console.log(`✅ Email de nueva planilla enviado a: ${approverEmails.join(', ')}`)
+      return true
+
+    } catch (error: any) {
+      console.error('❌ Error enviando email de nueva planilla:', error.message)
+      return false
+    }
+  }
+
+  /**
+   * Notifica al usuario que su planilla de gastos reparables fue aprobada
+   */
+  async notifyGastoReparableApproved(planilla: { planillaId: string; nroPlanilla: string; userName: string; userEmail?: string; totalAmount: number; itemCount: number; createdAt: Date }, approverName: string): Promise<boolean> {
+    try {
+      const configLoaded = await this.loadConfig()
+      if (!configLoaded || !planilla.userEmail) return false
+
+      const settings = await prisma.notificationSettings.findUnique({
+        where: { id: 'default' }
+      })
+
+      if (!settings?.enabled || !settings?.notifyOnApproval) return false
+
+      const transporter = this.createTransporter()
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #059669, #10B981); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+    .footer { background: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ Planilla Aprobada</h1>
+    </div>
+    <div class="content">
+      <p>Hola <strong>${planilla.userName}</strong>,</p>
+      <p>Tu planilla de gastos reparables <strong>${planilla.nroPlanilla}</strong> por <strong>S/ ${planilla.totalAmount.toFixed(2)}</strong> ha sido <span style="color: #059669; font-weight: bold;">APROBADA</span>.</p>
+      <p>Aprobado por: <strong>${approverName}</strong></p>
+    </div>
+    <div class="footer">
+      <p>Sistema Cockpit - Calzados Azaleia Perú S.A.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+
+      await transporter.sendMail({
+        from: this.config!.emailFrom,
+        to: planilla.userEmail,
+        subject: `✅ Tu Planilla ${planilla.nroPlanilla} fue Aprobada`,
+        html: htmlContent
+      })
+
+      console.log(`✅ Email de aprobación enviado a: ${planilla.userEmail}`)
+      return true
+
+    } catch (error: any) {
+      console.error('❌ Error enviando email de aprobación:', error.message)
+      return false
+    }
+  }
+
+  /**
+   * Notifica al usuario que su planilla de gastos reparables fue rechazada
+   */
+  async notifyGastoReparableRejected(planilla: { planillaId: string; nroPlanilla: string; userName: string; userEmail?: string; totalAmount: number; itemCount: number; createdAt: Date }, approverName: string, reason?: string): Promise<boolean> {
+    try {
+      const configLoaded = await this.loadConfig()
+      if (!configLoaded || !planilla.userEmail) return false
+
+      const settings = await prisma.notificationSettings.findUnique({
+        where: { id: 'default' }
+      })
+
+      if (!settings?.enabled || !settings?.notifyOnRejection) return false
+
+      const transporter = this.createTransporter()
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #DC2626, #EF4444); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+    .reason { background: #FEF2F2; border-left: 4px solid #DC2626; padding: 15px; margin: 15px 0; border-radius: 4px; }
+    .footer { background: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>❌ Planilla Rechazada</h1>
+    </div>
+    <div class="content">
+      <p>Hola <strong>${planilla.userName}</strong>,</p>
+      <p>Tu planilla de gastos reparables <strong>${planilla.nroPlanilla}</strong> ha sido <span style="color: #DC2626; font-weight: bold;">RECHAZADA</span>.</p>
+      <p>Rechazado por: <strong>${approverName}</strong></p>
+      ${reason ? `<div class="reason"><strong>Motivo:</strong> ${reason}</div>` : ''}
+      <p>Por favor, revisa y corrige los datos indicados para volver a enviarla.</p>
+    </div>
+    <div class="footer">
+      <p>Sistema Cockpit - Calzados Azaleia Perú S.A.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+
+      await transporter.sendMail({
+        from: this.config!.emailFrom,
+        to: planilla.userEmail,
+        subject: `❌ Tu Planilla ${planilla.nroPlanilla} fue Rechazada`,
+        html: htmlContent
+      })
+
+      console.log(`✅ Email de rechazo enviado a: ${planilla.userEmail}`)
+      return true
+
+    } catch (error: any) {
+      console.error('❌ Error enviando email de rechazo:', error.message)
+      return false
+    }
+  }
 }
