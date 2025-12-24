@@ -639,9 +639,10 @@ export default function HomePage() {
   // Cargar rendiciones/cajas cuando cambien los filtros específicos
   useEffect(() => {
     if (status === 'authenticated' && (operationType === 'RENDICION' || operationType === 'CAJA_CHICA')) {
+      console.log('🔄 Recargando rendiciones - estadoCierre:', estadoCierre, 'modoTrabajo:', modoTrabajo)
       loadRendiciones()
     }
-  }, [loadRendiciones, status, operationType])
+  }, [loadRendiciones, status, operationType, estadoCierre, modoTrabajo, filtroUsuarioRend])
 
   // Cargar rendiciones disponibles para asignación de planillas
   const loadAvailableRendiciones = async () => {
