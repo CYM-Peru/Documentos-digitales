@@ -10,6 +10,7 @@ import MultiUploadProgress from '@/components/MultiUploadProgress'
 import LogoutAnimation from '@/components/LogoutAnimation'
 import TimeBasedBackground from '@/components/TimeBasedBackground'
 import MovilidadForm from '@/components/MovilidadForm'
+import GastoReparableForm from '@/components/GastoReparableForm'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTimeOfDay } from '@/hooks/useTimeOfDay'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -118,6 +119,7 @@ export default function HomePage() {
   const [showLogoutAnimation, setShowLogoutAnimation] = useState(false)
   const [operationType, setOperationType] = useState<'RENDICION' | 'CAJA_CHICA' | 'PLANILLA_MOVILIDAD' | 'GASTO_REPARABLE' | null>(null)
   const [showMovilidadForm, setShowMovilidadForm] = useState(false)
+  const [showGastoReparableForm, setShowGastoReparableForm] = useState(false)
   const [pendingPlanillasCount, setPendingPlanillasCount] = useState(0)
   const [userPlanillasCount, setUserPlanillasCount] = useState({ pendientes: 0, aprobadas: 0, rechazadas: 0 })
   const [userPlanillas, setUserPlanillas] = useState<any[]>([])
@@ -2836,9 +2838,17 @@ export default function HomePage() {
         <div className="fixed bottom-6 left-0 right-0 px-4 z-30 md:bottom-8">
           <div className="max-w-[1920px] mx-auto flex gap-2 md:gap-3">
             <button
-              onClick={() => operationType === 'PLANILLA_MOVILIDAD' ? setShowMovilidadForm(true) : setShowCamera(true)}
+              onClick={() => {
+                if (operationType === 'PLANILLA_MOVILIDAD') {
+                  setShowMovilidadForm(true)
+                } else if (operationType === 'GASTO_REPARABLE') {
+                  setShowGastoReparableForm(true)
+                } else {
+                  setShowCamera(true)
+                }
+              }}
               disabled={uploading}
-              className={`flex-1 ${operationType === 'PLANILLA_MOVILIDAD' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'} text-white py-3 md:py-4 rounded-xl md:rounded-2xl text-sm md:text-base font-semibold disabled:opacity-50 shadow-2xl flex items-center justify-center gap-1 md:gap-2 transform hover:scale-[1.02] active:scale-[0.98] transition-all`}
+              className={`flex-1 ${operationType === 'PLANILLA_MOVILIDAD' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' : operationType === 'GASTO_REPARABLE' ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'} text-white py-3 md:py-4 rounded-xl md:rounded-2xl text-sm md:text-base font-semibold disabled:opacity-50 shadow-2xl flex items-center justify-center gap-1 md:gap-2 transform hover:scale-[1.02] active:scale-[0.98] transition-all`}
             >
               {operationType === 'PLANILLA_MOVILIDAD' ? (
                 <>
@@ -2846,6 +2856,13 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
                   </svg>
                   <span className="hidden sm:inline">Nueva Planilla</span>
+                </>
+              ) : operationType === 'GASTO_REPARABLE' ? (
+                <>
+                  <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">Nuevo Gasto</span>
                 </>
               ) : (
                 <>
@@ -2928,6 +2945,17 @@ export default function HomePage() {
           onSuccess={() => {
             setShowMovilidadForm(false)
             loadPlanillas() // Actualizar lista de planillas inmediatamente
+          }}
+        />
+      )}
+
+      {/* Gasto Reparable Form */}
+      {showGastoReparableForm && operationType === 'GASTO_REPARABLE' && (
+        <GastoReparableForm
+          onCancel={() => setShowGastoReparableForm(false)}
+          onSuccess={() => {
+            setShowGastoReparableForm(false)
+            loadInvoices() // Actualizar lista
           }}
         />
       )}

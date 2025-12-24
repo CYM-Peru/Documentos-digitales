@@ -115,13 +115,8 @@ export default function SelectOperationPage() {
   const handleSelectOperation = (type: 'RENDICION' | 'CAJA_CHICA' | 'PLANILLA_MOVILIDAD' | 'GASTO_REPARABLE') => {
     // Guardar selección en sessionStorage
     sessionStorage.setItem('operationType', type)
-
-    // Redirigir según el tipo de operación
-    if (type === 'GASTO_REPARABLE') {
-      router.push('/gastos-reparables')
-    } else {
-      router.push('/')
-    }
+    // Redirigir a la página principal
+    router.push('/')
   }
 
   // Determinar qué opciones mostrar según el rol del usuario
