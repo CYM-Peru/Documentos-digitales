@@ -531,8 +531,7 @@ export default function AprobacionPlanillasPage() {
                                         <th className="px-3 py-2 text-left text-gray-900 font-semibold">Motivo</th>
                                         <th className="px-3 py-2 text-left text-gray-900 font-semibold">Origen</th>
                                         <th className="px-3 py-2 text-left text-gray-900 font-semibold">Destino</th>
-                                        <th className="px-3 py-2 text-right text-gray-900 font-semibold">Monto Viaje</th>
-                                        <th className="px-3 py-2 text-right text-gray-900 font-semibold">Monto Día</th>
+                                        <th className="px-3 py-2 text-right text-gray-900 font-semibold">Monto (S/)</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -552,22 +551,16 @@ export default function AprobacionPlanillasPage() {
                                           <td className="px-3 py-2 text-right text-gray-900 font-medium">
                                             {formatCurrency(gasto.montoViaje)}
                                           </td>
-                                          <td className="px-3 py-2 text-right text-gray-900 font-medium">
-                                            {formatCurrency(gasto.montoDia)}
-                                          </td>
                                         </tr>
                                       ))}
                                     </tbody>
                                     <tfoot className="bg-gray-100 font-semibold">
                                       <tr>
                                         <td colSpan={5} className="px-3 py-2 text-right text-gray-900">
-                                          Totales:
+                                          Total:
                                         </td>
                                         <td className="px-3 py-2 text-right text-gray-900">
                                           {formatCurrency(planilla.totalViaje)}
-                                        </td>
-                                        <td className="px-3 py-2 text-right text-gray-900">
-                                          {formatCurrency(planilla.totalDia)}
                                         </td>
                                       </tr>
                                     </tfoot>
