@@ -24,6 +24,8 @@ export async function GET() {
         username: true,
         role: true,
         phone: true,
+        dni: true,
+        cargo: true,
         sede: {
           select: {
             id: true,
@@ -53,6 +55,47 @@ export async function GET() {
     console.error('Error getting user:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to get user' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * PATCH /api/users/me
+ * Actualiza dni y cargo del usuario autenticado
+ */
+export async function PATCH(request: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { dni, cargo } = body
+
+    const updatedUser = await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        ...(dni !== undefined && { dni }),
+        ...(cargo !== undefined && { cargo }),
+      },
+      select: {
+        id: true,
+        dni: true,
+        cargo: true,
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      user: updatedUser,
+    })
+  } catch (error: any) {
+    console.error('Error updating user:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to update user' },
       { status: 500 }
     )
   }

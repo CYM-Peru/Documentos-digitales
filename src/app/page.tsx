@@ -15,7 +15,8 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTimeOfDay } from '@/hooks/useTimeOfDay'
 import { useNotifications } from '@/hooks/useNotifications'
 import { FadeIn, SlideUp, ScaleIn, AnimatedCard } from '@/components/animations'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import gsap from 'gsap'
 
 interface Invoice {
   id: string
@@ -1772,14 +1773,18 @@ export default function HomePage() {
         </div>
         </ScaleIn>
 
-        {/* Filters - Ultra compacto */}
-        <SlideUp delay={0.7}>
-        <div className="space-y-2 mb-3">
-          {/* Fila 1: Búsqueda + Usuario */}
-          <div className="flex gap-2">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Filtros - Diseño compacto en 2 filas con animaciones */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm p-3 mb-3"
+        >
+          {/* FILA 1: Búsqueda + Filtros de estado + Selección */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Búsqueda */}
+            <div className="relative flex-1 min-w-[140px]">
+              <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -1787,132 +1792,162 @@ export default function HomePage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-900 bg-white"
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-slate-800 placeholder-slate-400 transition-all"
               />
             </div>
 
-            {/* User Filter - Solo para admins - CON CONTADOR DE DOCS */}
+            {/* Filtros de estado - Pills compactos */}
+            <div className="flex gap-1">
+              {[
+                { id: 'all', label: 'Todas', color: 'bg-slate-600' },
+                { id: 'completed', label: 'OK', color: 'bg-emerald-600' },
+                { id: 'processing', label: 'Proc', color: 'bg-amber-500' },
+                { id: 'failed', label: 'Error', color: 'bg-red-500' },
+              ].map((f, idx) => (
+                <motion.button
+                  key={f.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.05 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                    filter === f.id
+                      ? `${f.color} text-white shadow-md`
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </motion.button>
+              ))}
+              {/* Botón selección */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setSelectionMode(!selectionMode)
+                  setSelectedIds([])
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  selectionMode
+                    ? 'bg-rose-500 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {selectionMode ? '✕' : '☑'}
+              </motion.button>
+            </div>
+
+            {/* Filtro usuario docs - Solo admins */}
             {!['USER_L1', 'USER_L2'].includes(session?.user?.role || '') && users.length > 0 && (
               <select
                 value={userFilter}
                 onChange={(e) => setUserFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-900 bg-white font-semibold"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
               >
-                <option value="all">👤 Todos ({invoices.length} docs)</option>
+                <option value="all">Todos ({invoices.length})</option>
                 {users.map(user => (
                   <option key={user.id} value={user.id}>
-                    👤 {user.name?.split(' ')[0] || user.email.split('@')[0]} ({userDocumentCountsById[user.id] || 0} docs)
+                    {user.name || user.email.split('@')[0]} ({userDocumentCountsById[user.id] || 0})
                   </option>
                 ))}
               </select>
             )}
           </div>
 
-          {/* Fila 2: Filtros de estado */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {[
-              { id: 'all', label: 'Todas', icon: '📋' },
-              { id: 'completed', label: 'OK', icon: '✅' },
-              { id: 'processing', label: 'Proc', icon: '⏳' },
-              { id: 'failed', label: 'Error', icon: '❌' },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                  filter === f.id
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
+          {/* FILA 2: Solo para Rendiciones/Cajas - Filtros estado + Usuario + Toggle */}
+          <AnimatePresence>
+            {(operationType === 'RENDICION' || operationType === 'CAJA_CHICA') && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-slate-200"
               >
-                {f.icon} {f.label}
-              </button>
-            ))}
-            <button
-              onClick={() => {
-                setSelectionMode(!selectionMode)
-                setSelectedIds([])
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                selectionMode
-                  ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-            >
-              {selectionMode ? '❌' : '📌'}
-            </button>
-          </div>
-
-          {/* Fila 3: Filtro Abiertas/Cerradas - Solo para Rendiciones y Cajas Chicas */}
-          {(operationType === 'RENDICION' || operationType === 'CAJA_CHICA') && (
-            <div className="flex gap-1.5 pt-1">
-              {[
-                { id: 'abiertas', label: 'Abiertas', icon: '🔓', color: 'from-green-600 to-emerald-600' },
-                { id: 'cerradas', label: 'Cerradas', icon: '🔒', color: 'from-gray-600 to-slate-600' },
-                { id: 'todas', label: 'Todas', icon: '📂', color: 'from-indigo-600 to-purple-600' },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setEstadoCierre(f.id as 'todas' | 'abiertas' | 'cerradas')}
-                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                    estadoCierre === f.id
-                      ? `bg-gradient-to-r ${f.color} text-white shadow-lg`
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {f.icon} {f.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Toggle Modo Trabajo y Filtro por Usuario - Solo para roles que pueden ver todo */}
-          {(operationType === 'RENDICION' || operationType === 'CAJA_CHICA') &&
-           ['SUPER_ADMIN', 'STAFF', 'VERIFICADOR', 'APROBADOR'].includes(session?.user?.role || '') && (
-            <div className="pt-2 border-t border-gray-200 mt-2 space-y-2">
-              {/* Toggle Modo Trabajo */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-700">
-                  👤 Solo mis {operationType === 'CAJA_CHICA' ? 'cajas' : 'rendiciones'}
-                </span>
-                <button
-                  onClick={() => {
-                    setModoTrabajo(!modoTrabajo)
-                    if (!modoTrabajo) setFiltroUsuarioRend('') // Limpiar filtro al activar modo trabajo
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    modoTrabajo ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${
-                      modoTrabajo ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Filtro por Usuario - Solo si NO está en modo trabajo */}
-              {!modoTrabajo && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-700 whitespace-nowrap">🔍 Usuario:</span>
-                  <select
-                    value={filtroUsuarioRend}
-                    onChange={(e) => setFiltroUsuarioRend(e.target.value)}
-                    className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Todos los usuarios</option>
-                    {/* Obtener usuarios únicos de las rendiciones */}
-                    {Array.from(new Set(rendiciones.map(r => r.CodUserAsg))).filter(Boolean).sort().map(user => (
-                      <option key={user} value={user}>{user}</option>
-                    ))}
-                  </select>
+                {/* Estado Abiertas/Cerradas */}
+                <div className="flex gap-1">
+                  {[
+                    { id: 'abiertas', label: 'Abiertas', color: 'bg-emerald-600' },
+                    { id: 'cerradas', label: 'Cerradas', color: 'bg-slate-500' },
+                    { id: 'todas', label: 'Todas', color: 'bg-blue-600' },
+                  ].map((f) => (
+                    <motion.button
+                      key={f.id}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setEstadoCierre(f.id as 'todas' | 'abiertas' | 'cerradas')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                        estadoCierre === f.id
+                          ? `${f.color} text-white shadow-md`
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {f.id === 'abiertas' ? '🔓' : f.id === 'cerradas' ? '🔒' : '📂'} {f.label}
+                    </motion.button>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-        </SlideUp>
+
+                {/* Solo para roles superiores: Toggle + Filtro usuario */}
+                {['SUPER_ADMIN', 'STAFF', 'VERIFICADOR', 'APROBADOR'].includes(session?.user?.role || '') && (
+                  <>
+                    {/* Separador visual */}
+                    <div className="hidden sm:block w-px h-6 bg-slate-300" />
+
+                    {/* Toggle Solo mías */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setModoTrabajo(!modoTrabajo)
+                        if (!modoTrabajo) setFiltroUsuarioRend('')
+                      }}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                        modoTrabajo
+                          ? 'bg-amber-500 text-white shadow-md'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>Solo mías</span>
+                      <span className={`w-8 h-4 rounded-full relative transition-colors ${modoTrabajo ? 'bg-amber-300' : 'bg-slate-300'}`}>
+                        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${modoTrabajo ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </span>
+                    </motion.button>
+
+                    {/* Filtro por usuario - Solo si NO está en modo trabajo */}
+                    {!modoTrabajo && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="flex items-center gap-2"
+                      >
+                        <select
+                          value={filtroUsuarioRend}
+                          onChange={(e) => setFiltroUsuarioRend(e.target.value)}
+                          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer min-w-[160px]"
+                        >
+                          <option value="">👤 Todos los usuarios</option>
+                          {/* Usuarios únicos de rendiciones con nombres completos */}
+                          {Array.from(new Set(rendiciones.map(r => r.CodUserAsg))).filter(Boolean).sort().map(username => {
+                            // Buscar nombre completo en la lista de usuarios
+                            const userInfo = users.find(u => u.name?.toUpperCase().includes(username) || u.email.split('@')[0].toUpperCase() === username)
+                            return (
+                              <option key={username} value={username}>
+                                {userInfo?.name || username}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </motion.div>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Bulk Actions - Compacto */}
         {selectionMode && selectedIds.length > 0 && (

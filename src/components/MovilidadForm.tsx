@@ -76,10 +76,26 @@ export default function MovilidadForm({
     { fechaGasto: new Date().toISOString().split('T')[0], motivo: '', origen: '', destino: '', montoViaje: 0 }
   ])
 
-  // Precarga datos del usuario
+  // Precarga datos del usuario (nombre, dni, cargo)
   useEffect(() => {
-    if (session?.user?.name) {
-      setNombresApellidos(session.user.name)
+    const loadUserData = async () => {
+      if (session?.user?.name) {
+        setNombresApellidos(session.user.name)
+      }
+      // Cargar dni y cargo desde la API
+      try {
+        const response = await fetch('/api/users/me')
+        const data = await response.json()
+        if (data.success && data.user) {
+          if (data.user.dni) setDni(data.user.dni)
+          if (data.user.cargo) setCargo(data.user.cargo)
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error)
+      }
+    }
+    if (session) {
+      loadUserData()
     }
   }, [session])
 
@@ -248,6 +264,19 @@ export default function MovilidadForm({
 
       if (!response.ok) {
         throw new Error('Error al enviar la solicitud')
+      }
+
+      // Guardar dni y cargo del usuario para autocompletar en futuros formularios
+      if (dni || cargo) {
+        try {
+          await fetch('/api/users/me', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dni, cargo }),
+          })
+        } catch (e) {
+          console.error('Error guardando datos del usuario:', e)
+        }
       }
 
       alert('✓ Solicitud enviada correctamente\n\nTu planilla está pendiente de aprobación por Amanda Arroyo.\nSerás notificado cuando sea aprobada.')

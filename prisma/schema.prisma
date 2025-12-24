@@ -100,6 +100,8 @@ model User {
   username       String?  @unique // Usuario para login (ej: AARROYO) - case insensitive en auth
   name           String?
   phone          String?  // Número de WhatsApp para notificaciones (formato: 51999999999)
+  dni            String?  // DNI del usuario para autocompletar en formularios
+  cargo          String?  // Cargo del usuario para autocompletar en formularios
   passwordHash   String?
   role           UserRole @default(USER_L1)
   organizationId String
